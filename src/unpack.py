@@ -1,5 +1,6 @@
 import os
 import UnityPy
+from UnityPy.classes import PPtr
 import argparse
 import json
 import re
@@ -21,12 +22,12 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-def clean_file_name(name: str):
+def clean_file_name(name: str) -> str:
     # Removes invalid chars from a filename str
     return re.sub(r"[/\\?%*:|\"<>\x7F\x00-\x1F]", "-", name)
 
 
-def unpack_all_assets(source: str, destination_folder: str):
+def unpack_all_assets(source: str, destination_folder: str) -> None:
     if os.path.isfile(source):
         root = os.path.dirname(source)
         file_name = os.path.basename(source)
@@ -36,7 +37,7 @@ def unpack_all_assets(source: str, destination_folder: str):
             unpack_file(root, file_name, destination_folder)
 
 
-def unpack_file(root, file_name, destination_folder):
+def unpack_file(root: str, file_name: str, destination_folder: str) -> None:
     # generate file_path
     file_path = os.path.join(root, file_name)
     print("PARSING FILE: " + os.path.join(file_path))
@@ -53,7 +54,7 @@ def unpack_file(root, file_name, destination_folder):
             write_asset(pptr, destination_folder)
 
 
-def unpack_loot_table(source):
+def unpack_loot_table(source: str) -> None:
     env = UnityPy.load(source)
     for pptr in env.objects:
         if pptr.path_id == -2273047535729816587:
@@ -66,13 +67,13 @@ def unpack_loot_table(source):
                 write_asset(loot.lootItem, unpack_dir)
 
 
-def write_asset(pptr, destination_folder):
-    tree = pptr.read_typetree()
+def write_asset(pptr: PPtr, destination_folder: str) -> None:
+    tree = pptr.deref_parse_as_dict()
     name = ""
     if "m_Name" in tree:
         name = tree["m_Name"]
     else:
-        name = pptr.path_id
+        name = str(pptr.path_id)
     fp = os.path.join(destination_folder, f"{clean_file_name(name)}.json")
     with open(fp, "wt", encoding="utf8") as f:
         json.dump(tree, f, ensure_ascii=False, indent=4)
