@@ -1,0 +1,9 @@
+[project]
+name = "devils-gold"
+version = "0.1.0"
+description = "SULFUR datamining tool"
+readme = "README.md"
+requires-python = ">=3.13.0"
+dependencies = [
+    "unitypy>=1.20.15",
+]
