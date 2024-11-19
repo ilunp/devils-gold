@@ -4,16 +4,20 @@ import argparse
 import json
 import re
 
-UNPACK_DIR = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '..', 'unpacked'))
+UNPACK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "unpacked"))
 if not os.path.exists(UNPACK_DIR):
     os.makedirs(UNPACK_DIR)
 
-DEFAULT_PATH = r'C:\Program Files (x86)\Steam\steamapps\common\SULFUR\Sulfur_Data\StreamingAssets\aa\StandaloneWindows64'
+DEFAULT_PATH = r"C:\Program Files (x86)\Steam\steamapps\common\SULFUR\Sulfur_Data\StreamingAssets\aa\StandaloneWindows64"
 
 parser = argparse.ArgumentParser("unpack")
 parser.add_argument(
-    "--assetpath", help="Asset directory or file to unpack", type=str, default=DEFAULT_PATH, required=False)
+    "--assetpath",
+    help="Asset directory or file to unpack",
+    type=str,
+    default=DEFAULT_PATH,
+    required=False,
+)
 args = parser.parse_args()
 
 
@@ -35,15 +39,15 @@ def unpack_all_assets(source: str, destination_folder: str):
 def unpack_file(root, file_name, destination_folder):
     # generate file_path
     file_path = os.path.join(root, file_name)
-    print('PARSING FILE: ' + os.path.join(file_path))
+    print("PARSING FILE: " + os.path.join(file_path))
     # load that file via UnityPy.load
     env = UnityPy.load(file_path)
     for pptr in env.objects:
-        assetType = ''
+        assetType = ""
         try:
             assetType = pptr.type.name
         except:
-            print('error')
+            print("error")
         if assetType == "MonoBehaviour":
             breakpoint()
             write_asset(pptr, destination_folder)
@@ -55,7 +59,7 @@ def unpack_loot_table(source):
         if pptr.path_id == -2273047535729816587:
             loot_table = pptr.parse_as_object()
             name = loot_table.m_Name
-            unpack_dir = f'{UNPACK_DIR}/{name}'
+            unpack_dir = f"{UNPACK_DIR}/{name}"
             if not os.path.exists(unpack_dir):
                 os.makedirs(unpack_dir)
             for loot in loot_table.entries:
@@ -64,9 +68,9 @@ def unpack_loot_table(source):
 
 def write_asset(pptr, destination_folder):
     tree = pptr.read_typetree()
-    name = ''
-    if 'm_Name' in tree:
-        name = tree['m_Name']
+    name = ""
+    if "m_Name" in tree:
+        name = tree["m_Name"]
     else:
         name = pptr.path_id
     fp = os.path.join(destination_folder, f"{clean_file_name(name)}.json")
