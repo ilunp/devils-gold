@@ -27,7 +27,7 @@ def clean_file_name(name: str) -> str:
     return re.sub(r"[/\\?%*:|\"<>\x7F\x00-\x1F]", "-", name)
 
 
-def unpack_all_assets(source: str, destination_folder: str) -> None:
+def unpack_assets(source: str, destination_folder: str) -> None:
     if os.path.isfile(source):
         root = os.path.dirname(source)
         file_name = os.path.basename(source)
