@@ -71,6 +71,7 @@ name = "devils-gold"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "pyi2l" },
     { name = "unitypy" },
 ]
 
@@ -81,7 +82,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "unitypy", specifier = ">=1.20.15" }]
+requires-dist = [
+    { name = "pyi2l", git = "https://github.com/clemf/pyI2L" },
+    { name = "unitypy", specifier = ">=1.20.15" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -192,6 +196,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/0a/ed/6106a55d98868c0ed
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/7b/f7fdcdf6a6e8fd951c41e91baae8c1cecfffc2ed3199157afd6ab5728716/pyfmodex-0.7.2-py3-none-any.whl", hash = "sha256:1c42112b788e80ee7b4b57ae25bbbc0a98eb1e32a8e7c9e1246698cdf72efa9d", size = 126703 },
 ]
+
+[[package]]
+name = "pyi2l"
+version = "0.1.0"
+source = { git = "https://github.com/clemf/pyI2L#124025c934eddc141218b669c69b0183e1ce6b96" }
 
 [[package]]
 name = "ruff"

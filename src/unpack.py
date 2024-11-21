@@ -4,6 +4,7 @@ from UnityPy.classes import PPtr
 import argparse
 import json
 import re
+from translations import extract_translations
 
 UNPACK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "unpacked"))
 if not os.path.exists(UNPACK_DIR):
@@ -55,6 +56,7 @@ def unpack_file(root: str, file_name: str, destination_folder: str) -> None:
 
 
 def unpack_loot_table(source: str) -> None:
+    extract_translations()
     env = UnityPy.load(source)
     for pptr in env.objects:
         if pptr.path_id == -2273047535729816587:
