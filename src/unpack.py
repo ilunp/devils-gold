@@ -4,7 +4,7 @@ from UnityPy.classes import PPtr
 import argparse
 import json
 import re
-from translations import extract_translations
+from translations import extract_translations, getTranlatedName
 
 UNPACK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "unpacked"))
 if not os.path.exists(UNPACK_DIR):
@@ -26,16 +26,6 @@ args = parser.parse_args()
 def clean_file_name(name: str) -> str:
     # Removes invalid chars from a filename str
     return re.sub(r"[/\\?%*:|\"<>\x7F\x00-\x1F]", "-", name)
-
-
-def unpack_assets(source: str, destination_folder: str) -> None:
-    if os.path.isfile(source):
-        root = os.path.dirname(source)
-        file_name = os.path.basename(source)
-        unpack_file(root, file_name, destination_folder)
-    for root, dirs, files in os.walk(source):
-        for file_name in files:
-            unpack_file(root, file_name, destination_folder)
 
 
 def unpack_file(root: str, file_name: str, destination_folder: str) -> None:
@@ -69,14 +59,31 @@ def unpack_loot_table(source: str) -> None:
                 write_asset(loot.lootItem, unpack_dir)
 
 
+def getTypeDir(identifier: str, destination_folder: str) -> str:
+    dir = ""
+    if "Consumable_ChamberChisel" in identifier:
+        dir = "Chisels"
+    elif "Valuable" in identifier:
+        dir = "Valuables"
+    else:
+        dir = identifier.split("_")[0] + "s"
+    type_dir = os.path.join(destination_folder, dir)
+    if not os.path.exists(type_dir):
+        os.makedirs(type_dir)
+    return type_dir
+
+
 def write_asset(pptr: PPtr, destination_folder: str) -> None:
     tree = pptr.deref_parse_as_dict()
+    type_dir = destination_folder
     name = ""
     if "m_Name" in tree:
-        name = tree["m_Name"]
+        type_dir = getTypeDir(tree["m_Name"], destination_folder)
+        name = getTranlatedName(tree["m_Name"])
     else:
         name = str(pptr.path_id)
-    fp = os.path.join(destination_folder, f"{clean_file_name(name)}.json")
+
+    fp = os.path.join(type_dir, f"{clean_file_name(name)}.json")
     with open(fp, "wt", encoding="utf8") as f:
         json.dump(tree, f, ensure_ascii=False, indent=4)
 
