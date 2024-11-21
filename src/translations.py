@@ -12,7 +12,7 @@ def extract_translations(path: str = DEFAULT_PATH) -> None:
     write_output("unpacked/translations.csv", assets, writer)
 
 
-def getTranlatedName(
+def get_translation(
     name: str, prefix: str = "Items/", lang: str = "English [en]"
 ) -> str:
     with open("unpacked/translations.csv", encoding="utf-8") as csvfile:

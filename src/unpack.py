@@ -4,7 +4,8 @@ from UnityPy.classes import PPtr
 import argparse
 import json
 import re
-from translations import extract_translations, getTranlatedName
+from translations import extract_translations, get_translation
+from typing import Any
 
 UNPACK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "unpacked"))
 if not os.path.exists(UNPACK_DIR):
@@ -73,20 +74,31 @@ def getTypeDir(identifier: str, destination_folder: str) -> str:
     return type_dir
 
 
+def process_asset(asset_tree: dict[str, Any], translated_name: str) -> dict[str, Any]:
+    new_tree = {}
+    identifier = asset_tree.get("identifier")
+    new_tree["displayName"] = translated_name
+    flavor: str | Any = get_translation(f"{identifier}_flavor")
+    if not len(flavor):
+        flavor = asset_tree.get("flavor")
+    if flavor and len(flavor):
+        new_tree["flavor"] = flavor
+    return new_tree
+
+
 def write_asset(pptr: PPtr, destination_folder: str) -> None:
     tree = pptr.deref_parse_as_dict()
     type_dir = destination_folder
     name = ""
     if "m_Name" in tree:
         type_dir = getTypeDir(tree["m_Name"], destination_folder)
-        name = getTranlatedName(tree["m_Name"])
+        name = get_translation(tree["m_Name"])
+        tree = process_asset(tree, name)
     else:
         name = str(pptr.path_id)
-
     fp = os.path.join(type_dir, f"{clean_file_name(name)}.json")
     with open(fp, "wt", encoding="utf8") as f:
         json.dump(tree, f, ensure_ascii=False, indent=4)
 
 
-# unpack_all_assets(args.assetpath, UNPACK_DIR)
 unpack_loot_table(args.assetpath)
