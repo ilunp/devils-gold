@@ -48,8 +48,11 @@ def unpack_file(root: str, file_name: str, destination_folder: str) -> None:
 
 
 def unpack_loot_table(source: str) -> None:
+    print("Unpacking translations...")
     extract_translations()
+    print("Loading asset bundles...")
     env = UnityPy.load(source)
+    print("Unpacking assets...")
     for pptr in env.objects:
         if pptr.path_id == -2273047535729816587:
             loot_table = pptr.parse_as_object()
@@ -59,6 +62,7 @@ def unpack_loot_table(source: str) -> None:
                 os.makedirs(unpack_dir)
             for loot in loot_table.entries:
                 write_asset(loot.lootItem, unpack_dir)
+            return
 
 
 def getTypeDir(tree: dict[str, Any], destination_folder: str) -> str:
