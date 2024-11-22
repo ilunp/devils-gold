@@ -105,6 +105,9 @@ def process_asset(asset_tree: dict[str, Any], translated_name: str) -> dict[str,
     weight_class = asset_tree.get("weightClass")
     if "Weapon_" in identifier and isinstance(weight_class, int):
         new_tree["weightClass"] = HoldableWeightClass(weight_class).name
+    durability = asset_tree.get("maxDurability")
+    if durability and UseType(use_type) == UseType["Equippable"]:
+        new_tree["maxDurability"] = durability
     return new_tree
 
 
