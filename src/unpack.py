@@ -6,6 +6,7 @@ import json
 import re
 from translations import extract_translations, get_translation
 from typing import Any
+from sulfur import UseType, ItemQuality, SlotType, HoldableWeightClass
 
 UNPACK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "unpacked"))
 if not os.path.exists(UNPACK_DIR):
@@ -84,6 +85,26 @@ def process_asset(asset_tree: dict[str, Any], translated_name: str) -> dict[str,
         flavor = asset_tree.get("flavor")
     if flavor and len(flavor):
         new_tree["flavor"] = flavor
+    use_type = asset_tree.get("useType")
+    if isinstance(use_type, int):
+        new_tree["useType"] = UseType(use_type).name
+    if identifier:
+        new_tree["identifier"] = identifier
+    base_price = asset_tree.get("basePrice")
+    if isinstance(base_price, int):
+        new_tree["basePrice"] = base_price
+    item_quality = asset_tree.get("itemQuality")
+    if isinstance(item_quality, int):
+        new_tree["itemQuality"] = ItemQuality(item_quality).name
+    slot_type = asset_tree.get("slotType")
+    if slot_type:
+        new_tree["slotType"] = SlotType(slot_type).name
+    inventory_size = asset_tree.get("inventorySize")
+    if inventory_size:
+        new_tree["inventorySize"] = inventory_size
+    weight_class = asset_tree.get("weightClass")
+    if "Weapon_" in identifier and isinstance(weight_class, int):
+        new_tree["weightClass"] = HoldableWeightClass(weight_class).name
     return new_tree
 
 
