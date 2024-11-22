@@ -1,6 +1,13 @@
 from pyI2L import read_assets, write_output, parsers
 import csv
 
+"""
+Translations are important for getting the correct data.
+The asset properties are written in English, but a lot of the
+flavor text and even some of the names are changed by the
+translation library.
+"""
+
 DEFAULT_PATH = (
     r"C:\Program Files (x86)\Steam\steamapps\common\SULFUR\Sulfur_Data\resources.assets"
 )
@@ -20,5 +27,5 @@ def get_translation(
         fullName = prefix + name
         for row in reader:
             if row["20"] == fullName:
-                return row["English [en]"]
+                return row[lang]
         return name

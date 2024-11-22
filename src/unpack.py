@@ -76,6 +76,7 @@ def getTypeDir(identifier: str, destination_folder: str) -> str:
 
 def process_asset(asset_tree: dict[str, Any], translated_name: str) -> dict[str, Any]:
     new_tree = {}
+    # identifier is used by the translation library, not always the same as m_Name
     identifier = asset_tree.get("identifier")
     new_tree["displayName"] = translated_name
     flavor: str | Any = get_translation(f"{identifier}_flavor")
@@ -90,13 +91,16 @@ def write_asset(pptr: PPtr, destination_folder: str) -> None:
     tree = pptr.deref_parse_as_dict()
     type_dir = destination_folder
     name = ""
-    if "m_Name" in tree:
-        type_dir = getTypeDir(tree["m_Name"], destination_folder)
-        name = get_translation(tree["m_Name"])
+    if "identifier" in tree:
+        type_dir = getTypeDir(tree["identifier"], destination_folder)
+        name = get_translation(tree["identifier"])
         tree = process_asset(tree, name)
+    elif "m_Name" in tree:
+        name = tree["m_Name"]
     else:
         name = str(pptr.path_id)
-    fp = os.path.join(type_dir, f"{clean_file_name(name)}.json")
+    file_name = clean_file_name(name).replace(" ", "")
+    fp = os.path.join(type_dir, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
         json.dump(tree, f, ensure_ascii=False, indent=4)
 
