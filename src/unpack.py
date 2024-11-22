@@ -61,14 +61,33 @@ def unpack_loot_table(source: str) -> None:
                 write_asset(loot.lootItem, unpack_dir)
 
 
-def getTypeDir(identifier: str, destination_folder: str) -> str:
+def getTypeDir(tree: dict[str, Any], destination_folder: str) -> str:
+    identifier = tree.get("identifier") or ""
+    slot_type = tree.get("slotType") or ""
+    use_type = tree.get("useType")
     dir = ""
     if "Consumable_ChamberChisel" in identifier:
         dir = "Chisels"
     elif "Valuable" in identifier:
         dir = "Valuables"
-    else:
-        dir = identifier.split("_")[0] + "s"
+    elif UseType(use_type) == UseType["Equippable"]:
+        if SlotType(slot_type) == SlotType["Weapon"]:
+            dir = "Weapons"
+        else:
+            dir = "Equipment"
+    elif UseType(use_type) == UseType["ItemRepair"]:
+        dir = "Repair Items"
+    elif UseType(use_type) == UseType["Consumable"]:
+        dir = "Consumables"
+    elif UseType(use_type) == UseType["Attachment"]:
+        dir = "Attachments"
+    elif UseType(use_type) == UseType["Enchantment"]:
+        if "Oil" in identifier:
+            dir = "Oils"
+        else:
+            dir = "Scrolls"
+    elif UseType(use_type) == UseType["None"]:
+        dir = "Misc Items"
     type_dir = os.path.join(destination_folder, dir)
     if not os.path.exists(type_dir):
         os.makedirs(type_dir)
@@ -116,7 +135,7 @@ def write_asset(pptr: PPtr, destination_folder: str) -> None:
     type_dir = destination_folder
     name = ""
     if "identifier" in tree:
-        type_dir = getTypeDir(tree["identifier"], destination_folder)
+        type_dir = getTypeDir(tree, destination_folder)
         name = get_translation(tree["identifier"])
         tree = process_asset(tree, name)
     elif "m_Name" in tree:
