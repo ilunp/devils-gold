@@ -65,10 +65,10 @@ def unpack_loot_table(source: str) -> None:
             return
 
 
-def getTypeDir(tree: dict[str, Any], destination_folder: str) -> str:
-    identifier = tree.get("identifier") or ""
-    slot_type = tree.get("slotType") or ""
-    use_type = tree.get("useType")
+def getTypeDir(asset: PPtr, destination_folder: str) -> str:
+    identifier = getattr(asset, "identifier", "")
+    slot_type = getattr(asset, "slotType", "")
+    use_type = getattr(asset, "useType", "")
     dir = ""
     if "Consumable_ChamberChisel" in identifier:
         dir = "Chisels"
@@ -98,54 +98,82 @@ def getTypeDir(tree: dict[str, Any], destination_folder: str) -> str:
     return type_dir
 
 
-def process_asset(asset_tree: dict[str, Any], translated_name: str) -> dict[str, Any]:
-    new_tree = {}
+attribute_map: dict[int, str] = {}
+
+
+def get_attribute_name(pptr: PPtr) -> str:
+    global attribute_map
+    path_id = pptr.path_id
+    if attribute_map[path_id]:
+        return attribute_map[path_id]
+    else:
+        attribute = pptr.deref_parse_as_dict()
+        name = ""
+        if "itemDescriptionName" in attribute:
+            name = attribute["itemDescriptionName"]
+        elif "label" in attribute:
+            name = attribute["label"]
+        elif "enchantmentName" in attribute:
+            name = attribute["enchantmentName"]
+        attribute_map[path_id] = name
+        return name
+
+
+# def process_buffs(buffs: list[PPtr]) -> dict[str, Any]:
+#     buffs
+
+
+def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
+    asset_dict = {}
     # identifier is used by the translation library, not always the same as m_Name
-    identifier = asset_tree.get("identifier")
-    new_tree["displayName"] = translated_name
+    identifier = getattr(asset, "identifier", "")
+    asset_dict["displayName"] = translated_name
     flavor: str | Any = get_translation(f"{identifier}_flavor")
     if not len(flavor):
-        flavor = asset_tree.get("flavor")
-    if flavor and len(flavor):
-        new_tree["flavor"] = flavor
-    use_type = asset_tree.get("useType")
+        flavor = getattr(asset, "flavor", "")
+    if flavor:
+        asset_dict["flavor"] = flavor
+    use_type = getattr(asset, "useType", None)
     if isinstance(use_type, int):
-        new_tree["useType"] = UseType(use_type).name
+        asset_dict["useType"] = UseType(use_type).name
     if identifier:
-        new_tree["identifier"] = identifier
-    base_price = asset_tree.get("basePrice")
+        asset_dict["identifier"] = identifier
+    base_price = getattr(asset, "basePrice", None)
     if isinstance(base_price, int):
-        new_tree["basePrice"] = base_price
-    item_quality = asset_tree.get("itemQuality")
+        asset_dict["basePrice"] = base_price
+    item_quality = getattr(asset, "itemQuality", None)
     if isinstance(item_quality, int):
-        new_tree["itemQuality"] = ItemQuality(item_quality).name
-    slot_type = asset_tree.get("slotType")
+        asset_dict["itemQuality"] = ItemQuality(item_quality).name
+    slot_type = getattr(asset, "slotType", None)
     if slot_type:
-        new_tree["slotType"] = SlotType(slot_type).name
-    inventory_size = asset_tree.get("inventorySize")
+        asset_dict["slotType"] = SlotType(slot_type).name
+    inventory_size = getattr(asset, "inventorySize", None)
     if inventory_size:
-        new_tree["inventorySize"] = inventory_size
-    weight_class = asset_tree.get("weightClass")
+        asset_dict["inventorySize"] = {"x": inventory_size.x, "y": inventory_size.y}
+    weight_class = getattr(asset, "weightClass", None)
     if "Weapon_" in identifier and isinstance(weight_class, int):
-        new_tree["weightClass"] = HoldableWeightClass(weight_class).name
-    durability = asset_tree.get("maxDurability")
+        asset_dict["weightClass"] = HoldableWeightClass(weight_class).name
+    durability = getattr(asset, "maxDurability", None)
     if durability and UseType(use_type) == UseType["Equippable"]:
-        new_tree["maxDurability"] = durability
-    return new_tree
+        asset_dict["maxDurability"] = durability
+    buffs = getattr(asset, "buffsOnConsume", None)
+    # if buffs and len(buffs):
+    # new_buffs = process_buffs(buffs)
+    return asset_dict
 
 
 def write_asset(pptr: PPtr, destination_folder: str) -> None:
-    tree = pptr.deref_parse_as_dict()
     type_dir = destination_folder
     name = ""
-    if "identifier" in tree:
-        type_dir = getTypeDir(tree, destination_folder)
-        name = get_translation(tree["identifier"])
-        tree = process_asset(tree, name)
-    elif "m_Name" in tree:
-        name = tree["m_Name"]
+    tree: dict[str, Any] = {}
+    asset = pptr.deref_parse_as_object()
+    if hasattr(asset, "identifier"):
+        type_dir = getTypeDir(asset, destination_folder)
+        name = get_translation(asset.identifier)
+        tree = process_asset(asset, name)
     else:
         name = str(pptr.path_id)
+        tree = pptr.deref_parse_as_dict()
     file_name = clean_file_name(name).replace(" ", "")
     fp = os.path.join(type_dir, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
