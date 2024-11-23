@@ -65,3 +65,9 @@ ItemQuality = Enum(
     "ItemQuality",
     [("Common", 0), ("Uncommon", 1), ("Rare", 2), ("Epic", 3), ("Legendary", 4)],
 )
+
+StatModType = Enum(
+    "StatModType", [("Flat", 100), ("PercentAdd", 200), ("PercentMult", 300)]
+)
+
+BuffType = Enum("BuffType", [("Attribute", 0), ("Status", 1)])

@@ -6,7 +6,14 @@ import json
 import re
 from translations import extract_translations, get_translation
 from typing import Any
-from sulfur import UseType, ItemQuality, SlotType, HoldableWeightClass
+from sulfur import (
+    UseType,
+    ItemQuality,
+    SlotType,
+    HoldableWeightClass,
+    BuffType,
+    StatModType,
+)
 
 UNPACK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "unpacked"))
 if not os.path.exists(UNPACK_DIR):
@@ -104,7 +111,7 @@ attribute_map: dict[int, str] = {}
 def get_attribute_name(pptr: PPtr) -> str:
     global attribute_map
     path_id = pptr.path_id
-    if attribute_map[path_id]:
+    if path_id in attribute_map:
         return attribute_map[path_id]
     else:
         attribute = pptr.deref_parse_as_dict()
@@ -119,8 +126,32 @@ def get_attribute_name(pptr: PPtr) -> str:
         return name
 
 
-# def process_buffs(buffs: list[PPtr]) -> dict[str, Any]:
-#     buffs
+def process_buffs(buffs: list[PPtr]) -> list[dict[str, str]]:
+    processed_buffs = []
+    for buff in buffs:
+        buff_dict = {}
+        buff_type = getattr(buff, "buffType", None)
+        if isinstance(buff_type, int):
+            buff_dict["buffType"] = BuffType(buff_type).name
+        attribute: PPtr | None = getattr(buff, "attributeNew", None)
+        if attribute:
+            buff_dict["attribute"] = get_attribute_name(attribute)
+        stat_mod_type = getattr(buff, "statModType", None)
+        if stat_mod_type:
+            buff_dict["statModType"] = StatModType(stat_mod_type).name
+        value = getattr(buff, "value", None)
+        value_override = getattr(buff, "totalValueOverride", None)
+        if isinstance(value, float) and isinstance(value_override, float):
+            # In the game code, totalValueOverride takes precedence
+            final_value = value
+            if value_override > 0:
+                final_value = value_override
+            buff_dict["value"] = final_value
+        duration = getattr(buff, "duration", None)
+        if duration:
+            buff_dict["duration"] = duration
+        processed_buffs.append(buff_dict)
+    return processed_buffs
 
 
 def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
@@ -157,8 +188,9 @@ def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
     if durability and UseType(use_type) == UseType["Equippable"]:
         asset_dict["maxDurability"] = durability
     buffs = getattr(asset, "buffsOnConsume", None)
-    # if buffs and len(buffs):
-    # new_buffs = process_buffs(buffs)
+    if buffs and len(buffs):
+        new_buffs = process_buffs(buffs)
+        asset_dict["buffsOnConsume"] = new_buffs
     return asset_dict
 
 
