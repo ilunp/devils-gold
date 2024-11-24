@@ -116,11 +116,11 @@ def get_attribute_name(pptr: PPtr) -> str:
     else:
         attribute = pptr.deref_parse_as_dict()
         name = ""
-        if "itemDescriptionName" in attribute:
+        if "itemDescriptionName" in attribute and len(attribute["itemDescriptionName"]):
             name = attribute["itemDescriptionName"]
-        elif "label" in attribute:
+        elif "label" in attribute and len(attribute["label"]):
             name = attribute["label"]
-        elif "enchantmentName" in attribute:
+        elif "enchantmentName" in attribute and len(attribute["enchantmentName"]):
             name = attribute["enchantmentName"]
         attribute_map[path_id] = name
         return name
@@ -152,6 +152,23 @@ def process_buffs(buffs: list[PPtr]) -> list[dict[str, str]]:
             buff_dict["duration"] = duration
         processed_buffs.append(buff_dict)
     return processed_buffs
+
+
+def process_modifiers(modifiers: list[PPtr]) -> list[dict[str, str]]:
+    processed_modifiers = []
+    for modifier in modifiers:
+        modifier_dict = {}
+        attribute: PPtr | None = getattr(modifier, "attribute", None)
+        if attribute:
+            modifier_dict["attribute"] = get_attribute_name(attribute)
+        mod_type = getattr(modifier, "modType", None)
+        if mod_type:
+            modifier_dict["modType"] = StatModType(mod_type).name
+        value = getattr(modifier, "value", None)
+        if isinstance(value, float):
+            modifier_dict["value"] = value
+        processed_modifiers.append(modifier_dict)
+    return processed_modifiers
 
 
 def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
@@ -197,6 +214,12 @@ def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
         for status in remove_status:
             new_remove_status.append(get_attribute_name(status))
         asset_dict["removeStatusOnConsume"] = new_remove_status
+    enchantment = getattr(asset, "appliesEnchantment", None)
+    if enchantment:
+        enchantment_def = enchantment.deref_parse_as_object()
+        enchantment_modifiers = process_modifiers(enchantment_def.modifiersApplied)
+        asset_dict["appliesEnchantmentModifiers"] = enchantment_modifiers
+
     return asset_dict
 
 
