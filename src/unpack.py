@@ -154,7 +154,7 @@ def process_buffs(buffs: list[PPtr]) -> list[dict[str, str]]:
     return processed_buffs
 
 
-def process_modifiers(modifiers: list[PPtr]) -> list[dict[str, str]]:
+def process_modifiers(modifiers: list[PPtr]) -> list[dict[str, Any]]:
     processed_modifiers = []
     for modifier in modifiers:
         modifier_dict = {}
@@ -169,6 +169,20 @@ def process_modifiers(modifiers: list[PPtr]) -> list[dict[str, str]]:
             modifier_dict["value"] = value
         processed_modifiers.append(modifier_dict)
     return processed_modifiers
+
+
+def process_base_attributes(attributes: list[PPtr]) -> list[dict[str, Any]]:
+    processed_attributes = []
+    for base_attribute in attributes:
+        attribute_dict = {}
+        attribute: PPtr | None = getattr(base_attribute, "attribute", None)
+        if attribute:
+            attribute_dict["attribute"] = get_attribute_name(attribute)
+        value = getattr(base_attribute, "value", None)
+        if isinstance(value, float):
+            attribute_dict["value"] = value
+        processed_attributes.append(attribute_dict)
+    return processed_attributes
 
 
 def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
@@ -219,6 +233,9 @@ def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
         enchantment_def = enchantment.deref_parse_as_object()
         enchantment_modifiers = process_modifiers(enchantment_def.modifiersApplied)
         asset_dict["appliesEnchantmentModifiers"] = enchantment_modifiers
+    base_attributes = getattr(asset, "baseAttributes", None)
+    if base_attributes and len(base_attributes):
+        asset_dict["baseAttributes"] = process_base_attributes(base_attributes)
 
     return asset_dict
 
