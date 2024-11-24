@@ -191,6 +191,12 @@ def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
     if buffs and len(buffs):
         new_buffs = process_buffs(buffs)
         asset_dict["buffsOnConsume"] = new_buffs
+    remove_status = getattr(asset, "removeStatusOnConsume", None)
+    if remove_status and len(remove_status):
+        new_remove_status = []
+        for status in remove_status:
+            new_remove_status.append(get_attribute_name(status))
+        asset_dict["removeStatusOnConsume"] = new_remove_status
     return asset_dict
 
 
