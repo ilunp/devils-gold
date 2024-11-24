@@ -144,7 +144,7 @@ def process_buffs(buffs: list[PPtr]) -> list[dict[str, str]]:
         if isinstance(value, float) and isinstance(value_override, float):
             # In the game code, totalValueOverride takes precedence
             final_value = value
-            if value_override > 0:
+            if not value_override == float(0):
                 final_value = value_override
             buff_dict["value"] = final_value
         duration = getattr(buff, "duration", None)
@@ -181,6 +181,23 @@ def process_base_attributes(attributes: list[PPtr]) -> list[dict[str, Any]]:
         value = getattr(base_attribute, "value", None)
         if isinstance(value, float):
             attribute_dict["value"] = value
+        processed_attributes.append(attribute_dict)
+    return processed_attributes
+
+
+def process_caliber_attributes(attributes: list[PPtr]) -> list[dict[str, Any]]:
+    processed_attributes = []
+    for attribute in attributes:
+        attribute_dict = {}
+        caliber = getattr(attribute, "Caliber", None)
+        if caliber:
+            attribute_dict["Caliber"] = get_attribute_name(caliber)
+        kick_power = getattr(attribute, "KickPower", None)
+        if kick_power:
+            attribute_dict["KickPower"] = kick_power
+        spread = getattr(attribute, "Spread", None)
+        if spread:
+            attribute_dict["Spread"] = spread
         processed_attributes.append(attribute_dict)
     return processed_attributes
 
@@ -236,7 +253,24 @@ def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
     base_attributes = getattr(asset, "baseAttributes", None)
     if base_attributes and len(base_attributes):
         asset_dict["baseAttributes"] = process_base_attributes(base_attributes)
-
+    damage_type = getattr(asset, "damageType", None)
+    if damage_type:
+        asset_dict["damageType"] = get_attribute_name(damage_type)
+    weapon_type = getattr(asset, "weaponType", None)
+    if weapon_type:
+        asset_dict["weaponType"] = get_attribute_name(weapon_type)
+    caliber = getattr(asset, "caliber", None)
+    if caliber:
+        asset_dict["caliber"] = get_attribute_name(caliber)
+    damage_mult = getattr(asset, "damageMultiplier", None)
+    if isinstance(damage_mult, float):
+        asset_dict["damageMultiplier"] = damage_mult
+    kick_power = getattr(asset, "kickPower", None)
+    if kick_power and len(kick_power):
+        asset_dict["kickPower"] = process_caliber_attributes(kick_power)
+    spread_caliber = getattr(asset, "spreadPerCaliber", None)
+    if spread_caliber and len(spread_caliber):
+        asset_dict["spreadPerCaliber"] = process_caliber_attributes(spread_caliber)
     return asset_dict
 
 
