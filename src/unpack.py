@@ -202,6 +202,21 @@ def process_caliber_attributes(attributes: list[PPtr]) -> list[dict[str, Any]]:
     return processed_attributes
 
 
+def process_value(
+    asset: PPtr,
+    name: str,
+    dict: dict[str, Any],
+    type: type | None = None,
+) -> None:
+    value = getattr(asset, name, None)
+    if type:
+        if isinstance(value, type):
+            dict[name] = value
+    else:
+        if value:
+            dict[name] = value
+
+
 def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
     asset_dict = {}
     # identifier is used by the translation library, not always the same as m_Name
@@ -217,9 +232,7 @@ def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
         asset_dict["useType"] = UseType(use_type).name
     if identifier:
         asset_dict["identifier"] = identifier
-    base_price = getattr(asset, "basePrice", None)
-    if isinstance(base_price, int):
-        asset_dict["basePrice"] = base_price
+    process_value(asset, "basePrice", asset_dict, int)
     item_quality = getattr(asset, "itemQuality", None)
     if isinstance(item_quality, int):
         asset_dict["itemQuality"] = ItemQuality(item_quality).name
@@ -262,15 +275,22 @@ def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
     caliber = getattr(asset, "caliber", None)
     if caliber:
         asset_dict["caliber"] = get_attribute_name(caliber)
-    damage_mult = getattr(asset, "damageMultiplier", None)
-    if isinstance(damage_mult, float):
-        asset_dict["damageMultiplier"] = damage_mult
+    process_value(asset, "damageMultiplier", asset_dict, float)
     kick_power = getattr(asset, "kickPower", None)
     if kick_power and len(kick_power):
         asset_dict["kickPower"] = process_caliber_attributes(kick_power)
     spread_caliber = getattr(asset, "spreadPerCaliber", None)
     if spread_caliber and len(spread_caliber):
         asset_dict["spreadPerCaliber"] = process_caliber_attributes(spread_caliber)
+    process_value(asset, "adsEnabled", asset_dict, int)
+    process_value(asset, "overrideDamage", asset_dict, float)
+    process_value(asset, "bulletSpeed", asset_dict, float)
+    process_value(asset, "iAmmoMax", asset_dict, float)
+    process_value(asset, "shotsToReachFullSpread", asset_dict, int)
+    process_value(asset, "timeToCooldownSpread", asset_dict, float)
+    process_value(asset, "iMaxAmmoPerShot", asset_dict, int)
+    process_value(asset, "rpm", asset_dict, int)
+    process_value(asset, "cooldownBeforeReload", asset_dict, float)
     return asset_dict
 
 
