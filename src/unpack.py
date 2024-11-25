@@ -35,18 +35,28 @@ parser.add_argument(
     default=DEFAULT_PATH,
     required=False,
 )
+parser.add_argument(
+    "--lang",
+    help="Language to use for translations in ISO-639 2-letter code",
+    type=str,
+    default="en",
+    required=False,
+)
 args = parser.parse_args()
 
+global_language: str
 global_loot_table: MonoBehaviour | None = None
 global_items: dict[int, MonoBehaviour] = {}
 global_recipes: dict[int, MonoBehaviour] = {}
 
 
-def unpack_assets(source: str, unpack_dir: str) -> None:
+def unpack_assets(source: str, unpack_dir: str, language: str) -> None:
     global global_loot_table
     global global_recipes
     global global_items
+    global global_language
 
+    global_language = language
     if not os.path.exists(unpack_dir):
         os.makedirs(unpack_dir)
 
@@ -236,11 +246,12 @@ def process_value(
 
 
 def process_item(asset: MonoBehaviour, translated_name: str) -> dict[str, Any]:
+    global global_language
     asset_dict = {}
     # identifier is used by the translation library, not always the same as m_Name
     identifier = getattr(asset, "identifier", "")
     asset_dict["displayName"] = translated_name
-    flavor: str | Any = get_translation(f"{identifier}_flavor")
+    flavor: str | Any = get_translation(f"{identifier}_flavor", global_language)
     if not len(flavor):
         flavor = getattr(asset, "flavor", "")
     if flavor:
@@ -358,12 +369,13 @@ def get_unique_recipe_name(recipe: dict[str, Any]) -> str:
 
 def write_asset(asset: MonoBehaviour, path_id: int, destination_folder: str) -> None:
     global asset_name_map
+    global global_language
     final_destination = destination_folder
     name = ""
     tree: dict[str, Any] = {}
     if hasattr(asset, "identifier"):
         final_destination = get_item_type_dir(asset, destination_folder)
-        name = get_translation(asset.identifier)
+        name = get_translation(asset.identifier, global_language)
         asset_name_map[path_id] = name
         tree = process_item(asset, name)
     if hasattr(asset, "createsItem"):
@@ -384,4 +396,4 @@ versioned_unpack_dir = os.path.join(
     DEFAULT_UNPACK_DIR, "SULFUR_" + clean_file_name(args.gameversion)
 )
 
-unpack_assets(args.assetpath, versioned_unpack_dir)
+unpack_assets(args.assetpath, versioned_unpack_dir, args.lang)

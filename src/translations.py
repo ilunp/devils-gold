@@ -11,6 +11,23 @@ translation library.
 
 translations_path = ""
 
+languages = {
+    "en": "English [en]",
+    "sv": "Swedish [sv]",
+    "fr": "French [fr]",
+    "it": "Italian [it]",
+    "de": "German [de]",
+    "es": "Spanish [es]",
+    "pt": "Portuguese [pt]",
+    "ru": "Russian [ru]",
+    "pl": "Polish [pl]",
+    "ja": "Japanese [ja]",
+    "ko": "Korean [ko]",
+    "zh": "Chinese (Simplified) [zh-CN]",
+    "tr": "Turkish [tr]",
+    "ar": "Arabic [ar]",
+}
+
 
 def extract_translations(path: str, unpack_dir: str) -> None:
     global translations_path
@@ -22,14 +39,14 @@ def extract_translations(path: str, unpack_dir: str) -> None:
     translations_path = unpack_path
 
 
-def get_translation(
-    name: str, prefix: str = "Items/", lang: str = "English [en]"
-) -> str:
+def get_translation(name: str, lang: str = "en", prefix: str = "Items/") -> str:
     global translations_path
+    global languages
+    column = languages[lang]
     with open(translations_path, encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile)
         fullName = prefix + name
         for row in reader:
             if row["20"] == fullName:
-                return row[lang]
+                return row[column]
         return name
