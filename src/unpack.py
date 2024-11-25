@@ -60,13 +60,14 @@ def unpack_loot_table(source: str) -> None:
             if data.m_Name.startswith("Recipe_"):
                 global_recipes[pptr.path_id] = data
 
-    print("Unpacking assets...")
+    print("Unpacking Items...")
     item_unpack_dir = f"{UNPACK_DIR}/Items"
     if not os.path.exists(item_unpack_dir):
         os.makedirs(item_unpack_dir)
     for path_id, item in global_items.items():
         write_asset(item, path_id, item_unpack_dir)
 
+    print("Unpacking Recipes...")
     recipe_unpack_dir = f"{UNPACK_DIR}/Recipes"
     if not os.path.exists(recipe_unpack_dir):
         os.makedirs(recipe_unpack_dir)
@@ -84,7 +85,7 @@ def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
     elif "Valuable" in identifier:
         dir = "Valuables"
     elif UseType(use_type) == UseType["Equippable"]:
-        if SlotType(slot_type) == SlotType["Weapon"]:
+        if identifier.startswith("Weapon_"):
             dir = "Weapons"
         else:
             dir = "Equipment"
@@ -339,9 +340,7 @@ def get_unique_recipe_name(recipe: dict[str, Any]) -> str:
     new_dict = dict(recipe)
     del new_dict["m_Name"]
     recipe_str = json.dumps(new_dict, ensure_ascii=False)
-    print(recipe_str)
     unique_name = f"{item_name}_{create_uuid_from_string(recipe_str)}"
-    print(unique_name)
     return unique_name
 
 
