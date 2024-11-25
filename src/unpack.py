@@ -14,6 +14,7 @@ from sulfur import (
     StatModType,
 )
 from utils import clean_file_name, create_uuid_from_string
+from recipe import generate_recipe_list
 
 DEFAULT_UNPACK_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "unpacked")
@@ -50,13 +51,17 @@ global_items: dict[int, MonoBehaviour] = {}
 global_recipes: dict[int, MonoBehaviour] = {}
 
 
-def unpack_assets(source: str, unpack_dir: str, language: str) -> None:
+def unpack_assets(source: str, version: str, language: str) -> None:
     global global_loot_table
     global global_recipes
     global global_items
     global global_language
 
     global_language = language
+    unpack_dir = os.path.join(
+        DEFAULT_UNPACK_DIR,
+        "SULFUR_" + clean_file_name(version).replace(".", "-"),
+    )
     if not os.path.exists(unpack_dir):
         os.makedirs(unpack_dir)
 
@@ -94,6 +99,11 @@ def unpack_assets(source: str, unpack_dir: str, language: str) -> None:
         os.makedirs(recipe_unpack_dir)
     for recipe in global_recipes.values():
         write_asset(recipe, path_id, recipe_unpack_dir)
+
+    print("Generating Recipe List...")
+    generate_recipe_list(unpack_dir, version)
+
+    print(f"Finished unpacking data to {unpack_dir}")
 
 
 def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
@@ -392,8 +402,4 @@ def write_asset(asset: MonoBehaviour, path_id: int, destination_folder: str) -> 
         json.dump(tree, f, ensure_ascii=False, indent=4)
 
 
-versioned_unpack_dir = os.path.join(
-    DEFAULT_UNPACK_DIR, "SULFUR_" + clean_file_name(args.gameversion)
-)
-
-unpack_assets(args.assetpath, versioned_unpack_dir, args.lang)
+unpack_assets(args.assetpath, args.gameversion, args.lang)
