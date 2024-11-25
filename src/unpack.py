@@ -1,11 +1,11 @@
 import os
 import UnityPy
-from UnityPy.classes import PPtr
+from UnityPy.classes import PPtr, MonoBehaviour
 import argparse
 import json
 import re
 from translations import extract_translations, get_translation
-from typing import Any
+from typing import Any, Never
 from sulfur import (
     UseType,
     ItemQuality,
@@ -54,22 +54,39 @@ def unpack_file(root: str, file_name: str, destination_folder: str) -> None:
             write_asset(pptr, destination_folder)
 
 
+global_loot_table: MonoBehaviour | None = None
+global_items: dict[str, MonoBehaviour] = {}
+global_recipes: dict[str, MonoBehaviour] = {}
+
+
 def unpack_loot_table(source: str) -> None:
+    global global_loot_table
+    global global_recipes
+    global global_items
     print("Unpacking translations...")
     extract_translations()
     print("Loading asset bundles...")
     env = UnityPy.load(source)
     print("Unpacking assets...")
     for pptr in env.objects:
-        if pptr.path_id == -2273047535729816587:
-            loot_table = pptr.parse_as_object()
-            name = loot_table.m_Name
-            unpack_dir = f"{UNPACK_DIR}/{name}"
-            if not os.path.exists(unpack_dir):
-                os.makedirs(unpack_dir)
-            for loot in loot_table.entries:
-                write_asset(loot.lootItem, unpack_dir)
-            return
+        if pptr.type.name == "MonoBehaviour":
+            data: MonoBehaviour = pptr.parse_as_object()
+            if not global_loot_table and data.m_Name == "Loot_Global_Everything":
+                global_loot_table = data
+                for loot in global_loot_table.entries:
+                    if loot.lootItem.m_PathID not in global_items:
+                        global_items[loot.lootItem.m_PathID] = (
+                            loot.lootItem.deref_parse_as_object()
+                        )
+            if data.m_Name.startswith("Item_"):
+                global_items[pptr.path_id] = data
+            if data.m_Name.startswith("Recipe_"):
+                global_recipes[pptr.path_id] = data
+    unpack_dir = f"{UNPACK_DIR}/Items"
+    if not os.path.exists(unpack_dir):
+        os.makedirs(unpack_dir)
+    for item in global_items.values():
+        write_asset(item, unpack_dir)
 
 
 def getTypeDir(asset: PPtr, destination_folder: str) -> str:
@@ -97,6 +114,10 @@ def getTypeDir(asset: PPtr, destination_folder: str) -> str:
             dir = "Oils"
         else:
             dir = "Scrolls"
+    elif UseType(use_type) == UseType["Storage"]:
+        dir = "Storage"
+    elif UseType(use_type) == UseType["Key"]:
+        dir = "Keys"
     elif UseType(use_type) == UseType["None"]:
         dir = "Misc Items"
     type_dir = os.path.join(destination_folder, dir)
@@ -217,7 +238,7 @@ def process_value(
             dict[name] = value
 
 
-def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
+def process_asset(asset: MonoBehaviour, translated_name: str) -> dict[str, Any]:
     asset_dict = {}
     # identifier is used by the translation library, not always the same as m_Name
     identifier = getattr(asset, "identifier", "")
@@ -294,18 +315,14 @@ def process_asset(asset: PPtr, translated_name: str) -> dict[str, Any]:
     return asset_dict
 
 
-def write_asset(pptr: PPtr, destination_folder: str) -> None:
+def write_asset(asset: MonoBehaviour, destination_folder: str) -> None:
     type_dir = destination_folder
     name = ""
     tree: dict[str, Any] = {}
-    asset = pptr.deref_parse_as_object()
     if hasattr(asset, "identifier"):
         type_dir = getTypeDir(asset, destination_folder)
         name = get_translation(asset.identifier)
         tree = process_asset(asset, name)
-    else:
-        name = str(pptr.path_id)
-        tree = pptr.deref_parse_as_dict()
     file_name = clean_file_name(name).replace(" ", "")
     fp = os.path.join(type_dir, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
