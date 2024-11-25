@@ -342,15 +342,17 @@ def get_recipe_type_dir(asset: MonoBehaviour, destination_folder: str) -> str:
 
 def get_unique_recipe_name(recipe: dict[str, Any]) -> str:
     """
-    This hack fixes two issues.
-    There are some duplicate recipes (e.g. Poutine).
+    This hack fixes some issues:
+    There are some duplicate recipes (e.g. Poutine)
     There are some recipes with wrong names (e.g. Throwing Knife)
+    Allows for crude sorting by quantity
     """
     item_name = recipe["createsItem"]
+    quantity = recipe["quantityCreated"]
     new_dict = dict(recipe)
     del new_dict["m_Name"]
     recipe_str = json.dumps(new_dict, ensure_ascii=False)
-    unique_name = f"{item_name}_{create_uuid_from_string(recipe_str)}"
+    unique_name = f"{item_name}_{quantity}_{create_uuid_from_string(recipe_str)}"
     return unique_name
 
 
