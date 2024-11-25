@@ -37,26 +37,9 @@ def clean_file_name(name: str) -> str:
     return re.sub(r"[/\\?%*:|\"<>\x7F\x00-\x1F]", "-", name)
 
 
-def unpack_file(root: str, file_name: str, destination_folder: str) -> None:
-    # generate file_path
-    file_path = os.path.join(root, file_name)
-    print("PARSING FILE: " + os.path.join(file_path))
-    # load that file via UnityPy.load
-    env = UnityPy.load(file_path)
-    for pptr in env.objects:
-        assetType = ""
-        try:
-            assetType = pptr.type.name
-        except:
-            print("error")
-        if assetType == "MonoBehaviour":
-            breakpoint()
-            write_asset(pptr, destination_folder)
-
-
 global_loot_table: MonoBehaviour | None = None
-global_items: dict[str, MonoBehaviour] = {}
-global_recipes: dict[str, MonoBehaviour] = {}
+global_items: dict[int, MonoBehaviour] = {}
+global_recipes: dict[int, MonoBehaviour] = {}
 
 
 def unpack_loot_table(source: str) -> None:
@@ -67,7 +50,7 @@ def unpack_loot_table(source: str) -> None:
     extract_translations()
     print("Loading asset bundles...")
     env = UnityPy.load(source)
-    print("Unpacking assets...")
+    print("Finding assets...")
     for pptr in env.objects:
         if pptr.type.name == "MonoBehaviour":
             data: MonoBehaviour = pptr.parse_as_object()
@@ -82,11 +65,19 @@ def unpack_loot_table(source: str) -> None:
                 global_items[pptr.path_id] = data
             if data.m_Name.startswith("Recipe_"):
                 global_recipes[pptr.path_id] = data
-    unpack_dir = f"{UNPACK_DIR}/Items"
-    if not os.path.exists(unpack_dir):
-        os.makedirs(unpack_dir)
-    for item in global_items.values():
-        write_asset(item, unpack_dir)
+
+    print("Unpacking assets...")
+    item_unpack_dir = f"{UNPACK_DIR}/Items"
+    if not os.path.exists(item_unpack_dir):
+        os.makedirs(item_unpack_dir)
+    for path_id, item in global_items.items():
+        write_asset(item, path_id, item_unpack_dir)
+
+    recipe_unpack_dir = f"{UNPACK_DIR}/Recipes"
+    if not os.path.exists(recipe_unpack_dir):
+        os.makedirs(recipe_unpack_dir)
+    for recipe in global_recipes.values():
+        write_asset(recipe, path_id, recipe_unpack_dir)
 
 
 def getTypeDir(asset: PPtr, destination_folder: str) -> str:
@@ -127,24 +118,24 @@ def getTypeDir(asset: PPtr, destination_folder: str) -> str:
     return type_dir
 
 
-attribute_map: dict[int, str] = {}
+asset_name_map: dict[int, str] = {}
 
 
-def get_attribute_name(pptr: PPtr) -> str:
-    global attribute_map
+def get_asset_name(pptr: PPtr) -> str:
+    global asset_name_map
     path_id = pptr.path_id
-    if path_id in attribute_map:
-        return attribute_map[path_id]
+    if path_id in asset_name_map:
+        return asset_name_map[path_id]
     else:
-        attribute = pptr.deref_parse_as_dict()
+        asset = pptr.deref_parse_as_dict()
         name = ""
-        if "itemDescriptionName" in attribute and len(attribute["itemDescriptionName"]):
-            name = attribute["itemDescriptionName"]
-        elif "label" in attribute and len(attribute["label"]):
-            name = attribute["label"]
-        elif "enchantmentName" in attribute and len(attribute["enchantmentName"]):
-            name = attribute["enchantmentName"]
-        attribute_map[path_id] = name
+        if "itemDescriptionName" in asset and len(asset["itemDescriptionName"]):
+            name = asset["itemDescriptionName"]
+        elif "label" in asset and len(asset["label"]):
+            name = asset["label"]
+        elif "enchantmentName" in asset and len(asset["enchantmentName"]):
+            name = asset["enchantmentName"]
+        asset_name_map[path_id] = name
         return name
 
 
@@ -157,7 +148,7 @@ def process_buffs(buffs: list[PPtr]) -> list[dict[str, str]]:
             buff_dict["buffType"] = BuffType(buff_type).name
         attribute: PPtr | None = getattr(buff, "attributeNew", None)
         if attribute:
-            buff_dict["attribute"] = get_attribute_name(attribute)
+            buff_dict["attribute"] = get_asset_name(attribute)
         stat_mod_type = getattr(buff, "statModType", None)
         if stat_mod_type:
             buff_dict["statModType"] = StatModType(stat_mod_type).name
@@ -182,7 +173,7 @@ def process_modifiers(modifiers: list[PPtr]) -> list[dict[str, Any]]:
         modifier_dict = {}
         attribute: PPtr | None = getattr(modifier, "attribute", None)
         if attribute:
-            modifier_dict["attribute"] = get_attribute_name(attribute)
+            modifier_dict["attribute"] = get_asset_name(attribute)
         mod_type = getattr(modifier, "modType", None)
         if mod_type:
             modifier_dict["modType"] = StatModType(mod_type).name
@@ -199,7 +190,7 @@ def process_base_attributes(attributes: list[PPtr]) -> list[dict[str, Any]]:
         attribute_dict = {}
         attribute: PPtr | None = getattr(base_attribute, "attribute", None)
         if attribute:
-            attribute_dict["attribute"] = get_attribute_name(attribute)
+            attribute_dict["attribute"] = get_asset_name(attribute)
         value = getattr(base_attribute, "value", None)
         if isinstance(value, float):
             attribute_dict["value"] = value
@@ -213,7 +204,7 @@ def process_caliber_attributes(attributes: list[PPtr]) -> list[dict[str, Any]]:
         attribute_dict = {}
         caliber = getattr(attribute, "Caliber", None)
         if caliber:
-            attribute_dict["Caliber"] = get_attribute_name(caliber)
+            attribute_dict["Caliber"] = get_asset_name(caliber)
         kick_power = getattr(attribute, "KickPower", None)
         if kick_power:
             attribute_dict["KickPower"] = kick_power
@@ -239,7 +230,7 @@ def process_value(
             dict[name] = value
 
 
-def process_asset(asset: MonoBehaviour, translated_name: str) -> dict[str, Any]:
+def process_item(asset: MonoBehaviour, translated_name: str) -> dict[str, Any]:
     asset_dict = {}
     # identifier is used by the translation library, not always the same as m_Name
     identifier = getattr(asset, "identifier", "")
@@ -278,7 +269,7 @@ def process_asset(asset: MonoBehaviour, translated_name: str) -> dict[str, Any]:
     if remove_status and len(remove_status):
         new_remove_status = []
         for status in remove_status:
-            new_remove_status.append(get_attribute_name(status))
+            new_remove_status.append(get_asset_name(status))
         asset_dict["removeStatusOnConsume"] = new_remove_status
     enchantment = getattr(asset, "appliesEnchantment", None)
     if enchantment:
@@ -290,13 +281,13 @@ def process_asset(asset: MonoBehaviour, translated_name: str) -> dict[str, Any]:
         asset_dict["baseAttributes"] = process_base_attributes(base_attributes)
     damage_type = getattr(asset, "damageType", None)
     if damage_type:
-        asset_dict["damageType"] = get_attribute_name(damage_type)
+        asset_dict["damageType"] = get_asset_name(damage_type)
     weapon_type = getattr(asset, "weaponType", None)
     if weapon_type:
-        asset_dict["weaponType"] = get_attribute_name(weapon_type)
+        asset_dict["weaponType"] = get_asset_name(weapon_type)
     caliber = getattr(asset, "caliber", None)
     if caliber:
-        asset_dict["caliber"] = get_attribute_name(caliber)
+        asset_dict["caliber"] = get_asset_name(caliber)
     process_value(asset, "damageMultiplier", asset_dict, float)
     kick_power = getattr(asset, "kickPower", None)
     if kick_power and len(kick_power):
@@ -316,16 +307,30 @@ def process_asset(asset: MonoBehaviour, translated_name: str) -> dict[str, Any]:
     return asset_dict
 
 
-def write_asset(asset: MonoBehaviour, destination_folder: str) -> None:
-    type_dir = destination_folder
+def process_recipe(asset: MonoBehaviour) -> dict[str, Any]:
+    asset_dict: dict[str, Any] = {}
+    process_value(asset, "m_Name", asset_dict)
+    creates = getattr(asset, "createsItem", None)
+    if creates:
+        asset_dict["createsItem"] = get_asset_name(creates)
+    return asset_dict
+
+
+def write_asset(asset: MonoBehaviour, path_id: int, destination_folder: str) -> None:
+    global asset_name_map
+    final_destination = destination_folder
     name = ""
     tree: dict[str, Any] = {}
     if hasattr(asset, "identifier"):
-        type_dir = getTypeDir(asset, destination_folder)
+        final_destination = getTypeDir(asset, destination_folder)
         name = get_translation(asset.identifier)
-        tree = process_asset(asset, name)
+        asset_name_map[path_id] = name
+        tree = process_item(asset, name)
+    if hasattr(asset, "createsItem"):
+        tree = process_recipe(asset)
+        name = tree["m_Name"]
     file_name = clean_file_name(name).replace(" ", "")
-    fp = os.path.join(type_dir, f"{file_name}.json")
+    fp = os.path.join(final_destination, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
         json.dump(tree, f, ensure_ascii=False, indent=4)
 
