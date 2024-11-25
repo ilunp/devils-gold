@@ -15,16 +15,22 @@ from sulfur import (
 )
 from utils import clean_file_name, create_uuid_from_string
 
-UNPACK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "unpacked"))
-if not os.path.exists(UNPACK_DIR):
-    os.makedirs(UNPACK_DIR)
+DEFAULT_UNPACK_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "unpacked")
+)
 
-DEFAULT_PATH = r"C:\Program Files (x86)\Steam\steamapps\common\SULFUR\Sulfur_Data\StreamingAssets\aa\StandaloneWindows64"
+DEFAULT_PATH = r"C:\Program Files (x86)\Steam\steamapps\common\SULFUR\Sulfur_Data"
 
 parser = argparse.ArgumentParser("unpack")
+# This is kind of dumb but I can't figure out how to get the game version
+parser.add_argument(
+    "gameversion",
+    help="Sulfur game version",
+    type=str,
+)
 parser.add_argument(
     "--assetpath",
-    help="Asset directory or file to unpack",
+    help="Sulfur_Data path",
     type=str,
     default=DEFAULT_PATH,
     required=False,
@@ -36,14 +42,19 @@ global_items: dict[int, MonoBehaviour] = {}
 global_recipes: dict[int, MonoBehaviour] = {}
 
 
-def unpack_loot_table(source: str) -> None:
+def unpack_assets(source: str, unpack_dir: str) -> None:
     global global_loot_table
     global global_recipes
     global global_items
+
+    if not os.path.exists(unpack_dir):
+        os.makedirs(unpack_dir)
+
     print("Unpacking translations...")
-    extract_translations()
+    extract_translations(source, unpack_dir)
     print("Loading asset bundles...")
-    env = UnityPy.load(source)
+    assets_dir = os.path.join(source, "StreamingAssets")
+    env = UnityPy.load(assets_dir)
     print("Finding assets...")
     for pptr in env.objects:
         if pptr.type.name == "MonoBehaviour":
@@ -61,14 +72,14 @@ def unpack_loot_table(source: str) -> None:
                 global_recipes[pptr.path_id] = data
 
     print("Unpacking Items...")
-    item_unpack_dir = f"{UNPACK_DIR}/Items"
+    item_unpack_dir = f"{unpack_dir}/Items"
     if not os.path.exists(item_unpack_dir):
         os.makedirs(item_unpack_dir)
     for path_id, item in global_items.items():
         write_asset(item, path_id, item_unpack_dir)
 
     print("Unpacking Recipes...")
-    recipe_unpack_dir = f"{UNPACK_DIR}/Recipes"
+    recipe_unpack_dir = f"{unpack_dir}/Recipes"
     if not os.path.exists(recipe_unpack_dir):
         os.makedirs(recipe_unpack_dir)
     for recipe in global_recipes.values():
@@ -77,7 +88,6 @@ def unpack_loot_table(source: str) -> None:
 
 def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
     identifier = getattr(asset, "identifier", "")
-    slot_type = getattr(asset, "slotType", "")
     use_type = getattr(asset, "useType", "")
     dir = ""
     if "Consumable_ChamberChisel" in identifier:
@@ -368,4 +378,8 @@ def write_asset(asset: MonoBehaviour, path_id: int, destination_folder: str) -> 
         json.dump(tree, f, ensure_ascii=False, indent=4)
 
 
-unpack_loot_table(args.assetpath)
+versioned_unpack_dir = os.path.join(
+    DEFAULT_UNPACK_DIR, "SULFUR_" + clean_file_name(args.gameversion)
+)
+
+unpack_assets(args.assetpath, versioned_unpack_dir)
