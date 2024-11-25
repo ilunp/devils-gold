@@ -313,6 +313,17 @@ def process_recipe(asset: MonoBehaviour) -> dict[str, Any]:
     creates = getattr(asset, "createsItem", None)
     if creates:
         asset_dict["createsItem"] = get_asset_name(creates)
+    process_value(asset, "quantityCreated", asset_dict, int)
+    items_needed = getattr(asset, "itemsNeeded", None)
+    if items_needed:
+        new_items_needed = []
+        for entry in items_needed:
+            new_entry = {}
+            new_entry["item"] = get_asset_name(entry.item)
+            process_value(entry, "quantity", new_entry, int)
+            new_items_needed.append(new_entry)
+        asset_dict["itemsNeeded"] = new_items_needed
+    process_value(asset, "canBeCrafted", asset_dict, int)
     return asset_dict
 
 
