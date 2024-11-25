@@ -3,7 +3,6 @@ import UnityPy
 from UnityPy.classes import PPtr, MonoBehaviour
 import argparse
 import json
-import re
 from translations import extract_translations, get_translation
 from typing import Any
 from sulfur import (
@@ -14,6 +13,7 @@ from sulfur import (
     BuffType,
     StatModType,
 )
+from utils import clean_file_name, create_uuid_from_string
 
 UNPACK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "unpacked"))
 if not os.path.exists(UNPACK_DIR):
@@ -30,12 +30,6 @@ parser.add_argument(
     required=False,
 )
 args = parser.parse_args()
-
-
-def clean_file_name(name: str) -> str:
-    # Removes invalid chars from a filename str
-    return re.sub(r"[/\\?%*:|\"<>\x7F\x00-\x1F]", "-", name)
-
 
 global_loot_table: MonoBehaviour | None = None
 global_items: dict[int, MonoBehaviour] = {}
@@ -80,7 +74,7 @@ def unpack_loot_table(source: str) -> None:
         write_asset(recipe, path_id, recipe_unpack_dir)
 
 
-def getTypeDir(asset: PPtr, destination_folder: str) -> str:
+def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
     identifier = getattr(asset, "identifier", "")
     slot_type = getattr(asset, "slotType", "")
     use_type = getattr(asset, "useType", "")
@@ -327,19 +321,48 @@ def process_recipe(asset: MonoBehaviour) -> dict[str, Any]:
     return asset_dict
 
 
+def get_recipe_type_dir(asset: MonoBehaviour, destination_folder: str) -> str:
+    global global_items
+    item: PPtr = getattr(asset, "createsItem", None)
+    if item:
+        return get_item_type_dir(global_items[item.path_id], destination_folder)
+    return destination_folder
+
+
+def get_unique_recipe_name(recipe: dict[str, Any]) -> str:
+    """
+    This hack fixes two issues.
+    There are some duplicate recipes (e.g. Poutine).
+    There are some recipes with wrong names (e.g. Throwing Knife)
+    """
+    item_name = recipe["createsItem"]
+    new_dict = dict(recipe)
+    del new_dict["m_Name"]
+    recipe_str = json.dumps(new_dict, ensure_ascii=False)
+    print(recipe_str)
+    unique_name = f"{item_name}_{create_uuid_from_string(recipe_str)}"
+    print(unique_name)
+    return unique_name
+
+
 def write_asset(asset: MonoBehaviour, path_id: int, destination_folder: str) -> None:
     global asset_name_map
     final_destination = destination_folder
     name = ""
     tree: dict[str, Any] = {}
     if hasattr(asset, "identifier"):
-        final_destination = getTypeDir(asset, destination_folder)
+        final_destination = get_item_type_dir(asset, destination_folder)
         name = get_translation(asset.identifier)
         asset_name_map[path_id] = name
         tree = process_item(asset, name)
     if hasattr(asset, "createsItem"):
-        tree = process_recipe(asset)
-        name = tree["m_Name"]
+        if getattr(asset, "canBeCrafted", None):
+            final_destination = get_recipe_type_dir(asset, destination_folder)
+            tree = process_recipe(asset)
+            name = get_unique_recipe_name(tree)
+        else:
+            # Don't write uncraftable recipes
+            return
     file_name = clean_file_name(name).replace(" ", "")
     fp = os.path.join(final_destination, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
