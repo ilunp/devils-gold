@@ -5,7 +5,7 @@ import argparse
 import json
 import re
 from translations import extract_translations, get_translation
-from typing import Any, Never
+from typing import Any
 from sulfur import (
     UseType,
     ItemQuality,
@@ -110,7 +110,8 @@ def getTypeDir(asset: PPtr, destination_folder: str) -> str:
     elif UseType(use_type) == UseType["Attachment"]:
         dir = "Attachments"
     elif UseType(use_type) == UseType["Enchantment"]:
-        if "Oil" in identifier:
+        # Feature Gun Oil for some reason does not have Oil in the identifier
+        if "Oil" in identifier or "FeatureGun" in identifier:
             dir = "Oils"
         else:
             dir = "Scrolls"
