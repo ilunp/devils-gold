@@ -287,6 +287,9 @@ def process_item(asset: MonoBehaviour, translated_name: str) -> dict[str, Any]:
     durability = getattr(asset, "maxDurability", None)
     if durability and UseType(use_type) == UseType["Equippable"]:
         asset_dict["maxDurability"] = durability
+    equip_modifiers = getattr(asset, "modifiersOnEquipNew", None)
+    if equip_modifiers and len(equip_modifiers):
+        asset_dict["modifiersOnEquip"] = process_modifiers(equip_modifiers)
     buffs = getattr(asset, "buffsOnConsume", None)
     if buffs and len(buffs):
         new_buffs = process_buffs(buffs)
