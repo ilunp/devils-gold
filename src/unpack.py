@@ -46,16 +46,17 @@ parser.add_argument(
 args = parser.parse_args()
 
 global_language: str
-global_loot_table: MonoBehaviour | None = None
 global_items: dict[int, MonoBehaviour] = {}
 global_recipes: dict[int, MonoBehaviour] = {}
 
+global_loot_tables: dict[int, MonoBehaviour] = {}
+
 
 def unpack_assets(source: str, version: str, language: str) -> None:
-    global global_loot_table
     global global_recipes
     global global_items
     global global_language
+    global global_loot_tables
 
     global_language = language
     unpack_dir = os.path.join(
@@ -74,15 +75,15 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     for pptr in env.objects:
         if pptr.type.name == "MonoBehaviour":
             data: MonoBehaviour = pptr.parse_as_object()
-            if not global_loot_table and data.m_Name == "Loot_Global_Everything":
-                global_loot_table = data
-                for loot in global_loot_table.entries:
-                    if loot.lootItem.m_PathID not in global_items:
-                        global_items[loot.lootItem.m_PathID] = (
-                            loot.lootItem.deref_parse_as_object()
-                        )
-            if data.m_Name.startswith("Item_"):
-                global_items[pptr.path_id] = data
+            if hasattr(data, "entries") and "Demo" not in data.m_Name:
+                global_loot_tables[pptr.path_id] = data
+            if hasattr(data, "useType"):
+                if hasattr(data, "usableByPlayer"):
+                    if data.usableByPlayer:
+                        # Don't select monster weapons
+                        global_items[pptr.path_id] = data
+                else:
+                    global_items[pptr.path_id] = data
             if data.m_Name.startswith("Recipe_"):
                 global_recipes[pptr.path_id] = data
 
@@ -99,6 +100,13 @@ def unpack_assets(source: str, version: str, language: str) -> None:
         os.makedirs(recipe_unpack_dir)
     for recipe in global_recipes.values():
         write_asset(recipe, path_id, recipe_unpack_dir)
+
+    print("Unpacking Loot Tables..")
+    loot_table_unpack_dir = f"{unpack_dir}/Loot Tables"
+    if not os.path.exists(loot_table_unpack_dir):
+        os.makedirs(loot_table_unpack_dir)
+    for path_id, table in global_loot_tables.items():
+        write_asset(table, path_id, loot_table_unpack_dir)
 
     print("Generating Recipe List...")
     generate_recipe_list(unpack_dir, version)
@@ -380,6 +388,21 @@ def get_unique_recipe_name(recipe: dict[str, Any]) -> str:
     return unique_name
 
 
+def process_loot_table(table: MonoBehaviour) -> dict[str, Any]:
+    result = {}
+    result["m_Name"] = table.m_Name
+    entries = []
+    for entry in table.entries:
+        if not entry.lootItem.path_id == 0:
+            item = {
+                "name": get_asset_name(entry.lootItem),
+                "lootWeight": entry.lootWeight,
+            }
+            entries.append(item)
+    result["entries"] = entries
+    return result
+
+
 def write_asset(asset: MonoBehaviour, path_id: int, destination_folder: str) -> None:
     global asset_name_map
     global global_language
@@ -399,6 +422,9 @@ def write_asset(asset: MonoBehaviour, path_id: int, destination_folder: str) -> 
         else:
             # Don't write uncraftable recipes
             return
+    if hasattr(asset, "entries"):
+        name = asset.m_Name
+        tree = process_loot_table(asset)
     file_name = clean_file_name(name).replace(" ", "")
     fp = os.path.join(final_destination, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
