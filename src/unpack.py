@@ -12,6 +12,7 @@ from sulfur import (
     HoldableWeightClass,
     BuffType,
     StatModType,
+    ItemType,
 )
 from utils import clean_file_name, create_uuid_from_string
 from recipe import generate_recipe_list
@@ -237,6 +238,8 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
             value = ItemQuality(value).name
         elif attr == "appliesEnchantment":
             value = get_enchantment_modifiers(value)
+        elif attr == "itemType":
+            value = ItemType(value).name
         asset_dict[attr] = value
     return asset_dict
 
@@ -304,6 +307,9 @@ def process_loot_table(asset: MonoBehaviour, destination_folder: str) -> None:
 def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None:
     processed_settings = process_asset(asset)
     write_asset(processed_settings, asset.m_Name, destination_folder)
+    loot_settings_obj = asset.LootSettings.deref_parse_as_object()
+    processed_loot_settings = process_asset(loot_settings_obj)
+    write_asset(processed_loot_settings, loot_settings_obj.m_Name, destination_folder)
     for act in asset.Acts:
         act_obj = act.deref_parse_as_object()
         processed_act = process_asset(act_obj)
