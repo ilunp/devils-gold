@@ -91,32 +91,23 @@ def unpack_assets(source: str, version: str, language: str) -> None:
                 global_recipes[pptr.path_id] = data
 
     print("Unpacking Items...")
-    item_unpack_dir = f"{unpack_dir}/Items"
-    if not os.path.exists(item_unpack_dir):
-        os.makedirs(item_unpack_dir)
+    item_unpack_dir = os.path.join(unpack_dir, "Items")
     for path_id, item in global_items.items():
         process_item(item, path_id, item_unpack_dir)
 
     print("Unpacking Recipes...")
-    recipe_unpack_dir = f"{unpack_dir}/Recipes"
-    if not os.path.exists(recipe_unpack_dir):
-        os.makedirs(recipe_unpack_dir)
+    recipe_unpack_dir = os.path.join(unpack_dir, "Recipes")
     for recipe in global_recipes.values():
         process_recipe(recipe, recipe_unpack_dir)
 
     print("Unpacking Loot Tables..")
-    loot_table_unpack_dir = f"{unpack_dir}/Loot Tables"
-    if not os.path.exists(loot_table_unpack_dir):
-        os.makedirs(loot_table_unpack_dir)
+    loot_table_unpack_dir = os.path.join(unpack_dir, "Loot Tables")
     for table in global_loot_tables.values():
         process_loot_table(table, loot_table_unpack_dir)
 
-    # if global_game_settings:
-    #     settings_unpack_dir = f"{unpack_dir}/Game Settings"
-    #     if not os.path.exists(settings_unpack_dir):
-    #         os.makedirs(settings_unpack_dir)
-    #     for path_id, table in global_loot_tables.items():
-    #         write_asset(table, path_id, settings_unpack_dir)
+    print("Unpacking Game Settings...")
+    settings_unpack_dir = os.path.join(unpack_dir, "Game Settings")
+    process_game_settings(global_game_settings, settings_unpack_dir)
 
     print("Generating Recipe List...")
     generate_recipe_list(unpack_dir, version)
@@ -202,8 +193,8 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
         attr
         for attr in dir(asset)
         if not attr.startswith("_")
-        and type(getattr(asset, attr)) in [int, float, str, PPtr, list, int2_storage]
         and attr not in ["m_Enabled", "m_Script", "m_GameObject", "assets_file"]
+        and type(getattr(asset, attr)) in [int, float, str, PPtr, list, int2_storage]
     ]
     asset_dict = {}
     for attr in attr_list:
@@ -218,7 +209,14 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
         elif type(value) is list:
             new_list = []
             for item in value:
-                new_item = process_asset(item)
+                new_item: Any | None = None
+                if type(item) is PPtr:
+                    if item.path_id == 0:
+                        new_item = None
+                    else:
+                        new_item = get_asset_name(item)
+                else:
+                    new_item = process_asset(item)
                 new_list.append(new_item)
             value = new_list
         elif attr == "displayName" and "identifier" in attr_list:
@@ -303,7 +301,30 @@ def process_loot_table(asset: MonoBehaviour, destination_folder: str) -> None:
     write_asset(tree, name, final_destination)
 
 
+def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None:
+    processed_settings = process_asset(asset)
+    write_asset(processed_settings, asset.m_Name, destination_folder)
+    for act in asset.Acts:
+        act_obj = act.deref_parse_as_object()
+        processed_act = process_asset(act_obj)
+        act_dir = os.path.join(destination_folder, act_obj.actName)
+        write_asset(processed_act, act_obj.actName, act_dir)
+        for index, environment in enumerate(act_obj.environments):
+            environment_obj = environment.deref_parse_as_object()
+            processed_env = process_asset(environment_obj)
+            level_dir = os.path.join(
+                act_dir, f"{index + 1}_{environment_obj.environmentName}"
+            )
+            write_asset(processed_env, environment_obj.m_Name, level_dir)
+            for level in environment_obj.levelList:
+                level_obj = level.deref_parse_as_object()
+                processed_level = process_asset(level_obj)
+                write_asset(processed_level, level_obj.m_Name, level_dir)
+
+
 def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
+    if not os.path.exists(path):
+        os.makedirs(path)
     file_name = clean_file_name(name).replace(" ", "")
     fp = os.path.join(path, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
