@@ -1,6 +1,6 @@
 import os
 import UnityPy
-from UnityPy.classes import PPtr, MonoBehaviour
+from UnityPy.classes import PPtr, MonoBehaviour, int2_storage
 import argparse
 import json
 from translations import extract_translations, get_translation
@@ -92,6 +92,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     if not os.path.exists(item_unpack_dir):
         os.makedirs(item_unpack_dir)
     for path_id, item in global_items.items():
+        process_asset(item)
         write_asset(item, path_id, item_unpack_dir)
 
     print("Unpacking Recipes...")
@@ -162,211 +163,80 @@ def get_asset_name(pptr: PPtr) -> str:
     else:
         asset = pptr.deref_parse_as_dict()
         name = ""
-        if "itemDescriptionName" in asset and len(asset["itemDescriptionName"]):
+        if "displayName" in asset and "identifier" in asset:
+            translated = get_translation(asset["identifier"], global_language)
+            name = translated
+        elif "itemDescriptionName" in asset and len(asset["itemDescriptionName"]):
             name = asset["itemDescriptionName"]
         elif "label" in asset and len(asset["label"]):
             name = asset["label"]
         elif "enchantmentName" in asset and len(asset["enchantmentName"]):
             name = asset["enchantmentName"]
+        elif "m_Name" in asset and len(asset["m_Name"]):
+            name = asset["m_Name"]
+        else:
+            name = str(path_id)
         asset_name_map[path_id] = name
         return name
 
 
-def process_buffs(buffs: list[PPtr]) -> list[dict[str, str]]:
-    processed_buffs = []
-    for buff in buffs:
-        buff_dict = {}
-        buff_type = getattr(buff, "buffType", None)
-        if isinstance(buff_type, int):
-            buff_dict["buffType"] = BuffType(buff_type).name
-        attribute: PPtr | None = getattr(buff, "attributeNew", None)
-        if attribute:
-            buff_dict["attribute"] = get_asset_name(attribute)
-        stat_mod_type = getattr(buff, "statModType", None)
-        if stat_mod_type:
-            buff_dict["statModType"] = StatModType(stat_mod_type).name
-        value = getattr(buff, "value", None)
-        value_override = getattr(buff, "totalValueOverride", None)
-        if isinstance(value, float) and isinstance(value_override, float):
-            # In the game code, totalValueOverride takes precedence
-            final_value = value
-            if not value_override == float(0):
-                final_value = value_override
-            buff_dict["value"] = final_value
-        duration = getattr(buff, "duration", None)
-        if duration:
-            buff_dict["duration"] = duration
-        processed_buffs.append(buff_dict)
-    return processed_buffs
+def get_enchantment_modifiers(enchantment: PPtr) -> list[dict[str, Any]]:
+    modifiers = []
+    asset = enchantment.deref_parse_as_object()
+    for modifier in asset.modifiersApplied:
+        modifiers.append(process_asset(modifier))
+    return modifiers
 
 
-def process_modifiers(modifiers: list[PPtr]) -> list[dict[str, Any]]:
-    processed_modifiers = []
-    for modifier in modifiers:
-        modifier_dict = {}
-        attribute: PPtr | None = getattr(modifier, "attribute", None)
-        if attribute:
-            modifier_dict["attribute"] = get_asset_name(attribute)
-        mod_type = getattr(modifier, "modType", None)
-        if mod_type:
-            modifier_dict["modType"] = StatModType(mod_type).name
-        value = getattr(modifier, "value", None)
-        if isinstance(value, float):
-            modifier_dict["value"] = value
-        processed_modifiers.append(modifier_dict)
-    return processed_modifiers
-
-
-def process_base_attributes(attributes: list[PPtr]) -> list[dict[str, Any]]:
-    processed_attributes = []
-    for base_attribute in attributes:
-        attribute_dict = {}
-        attribute: PPtr | None = getattr(base_attribute, "attribute", None)
-        if attribute:
-            attribute_dict["attribute"] = get_asset_name(attribute)
-        value = getattr(base_attribute, "value", None)
-        if isinstance(value, float):
-            attribute_dict["value"] = value
-        processed_attributes.append(attribute_dict)
-    return processed_attributes
-
-
-def process_caliber_attributes(attributes: list[PPtr]) -> list[dict[str, Any]]:
-    processed_attributes = []
-    for attribute in attributes:
-        attribute_dict = {}
-        caliber = getattr(attribute, "Caliber", None)
-        if caliber:
-            attribute_dict["Caliber"] = get_asset_name(caliber)
-        kick_power = getattr(attribute, "KickPower", None)
-        if kick_power:
-            attribute_dict["KickPower"] = kick_power
-        spread = getattr(attribute, "Spread", None)
-        if spread:
-            attribute_dict["Spread"] = spread
-        processed_attributes.append(attribute_dict)
-    return processed_attributes
-
-
-def process_value(
-    asset: PPtr,
-    name: str,
-    dict: dict[str, Any],
-    type: type | None = None,
-) -> None:
-    value = getattr(asset, name, None)
-    if type:
-        if isinstance(value, type):
-            dict[name] = value
-    else:
-        if value:
-            dict[name] = value
-
-
-def process_item(asset: MonoBehaviour, translated_name: str) -> dict[str, Any]:
-    global global_language
+def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
+    attr_list = [
+        attr
+        for attr in dir(asset)
+        if not attr.startswith("_")
+        and type(getattr(asset, attr)) in [int, float, str, PPtr, list, int2_storage]
+        and attr not in ["m_Enabled", "m_Script", "m_GameObject", "assets_file"]
+    ]
     asset_dict = {}
-    # identifier is used by the translation library, not always the same as m_Name
-    identifier = getattr(asset, "identifier", "")
-    asset_dict["displayName"] = translated_name
-    flavor: str | Any = get_translation(f"{identifier}_flavor", global_language)
-    if not len(flavor):
-        flavor = getattr(asset, "flavor", "")
-    if flavor:
-        asset_dict["flavor"] = flavor
-    use_type = getattr(asset, "useType", None)
-    if isinstance(use_type, int):
-        asset_dict["useType"] = UseType(use_type).name
-    if identifier:
-        asset_dict["identifier"] = identifier
-    process_value(asset, "basePrice", asset_dict, int)
-    item_quality = getattr(asset, "itemQuality", None)
-    if isinstance(item_quality, int):
-        asset_dict["itemQuality"] = ItemQuality(item_quality).name
-    slot_type = getattr(asset, "slotType", None)
-    if slot_type:
-        asset_dict["slotType"] = SlotType(slot_type).name
-    inventory_size = getattr(asset, "inventorySize", None)
-    if inventory_size:
-        asset_dict["inventorySize"] = {"x": inventory_size.x, "y": inventory_size.y}
-    weight_class = getattr(asset, "weightClass", None)
-    if "Weapon_" in identifier and isinstance(weight_class, int):
-        asset_dict["weightClass"] = HoldableWeightClass(weight_class).name
-    durability = getattr(asset, "maxDurability", None)
-    if durability and UseType(use_type) == UseType["Equippable"]:
-        asset_dict["maxDurability"] = durability
-    equip_modifiers = getattr(asset, "modifiersOnEquipNew", None)
-    if equip_modifiers and len(equip_modifiers):
-        asset_dict["modifiersOnEquip"] = process_modifiers(equip_modifiers)
-    buffs = getattr(asset, "buffsOnConsume", None)
-    if buffs and len(buffs):
-        new_buffs = process_buffs(buffs)
-        asset_dict["buffsOnConsume"] = new_buffs
-    remove_status = getattr(asset, "removeStatusOnConsume", None)
-    if remove_status and len(remove_status):
-        new_remove_status = []
-        for status in remove_status:
-            new_remove_status.append(get_asset_name(status))
-        asset_dict["removeStatusOnConsume"] = new_remove_status
-    enchantment = getattr(asset, "appliesEnchantment", None)
-    if enchantment:
-        enchantment_def = enchantment.deref_parse_as_object()
-        enchantment_modifiers = process_modifiers(enchantment_def.modifiersApplied)
-        asset_dict["appliesEnchantmentModifiers"] = enchantment_modifiers
-    base_attributes = getattr(asset, "baseAttributes", None)
-    if base_attributes and len(base_attributes):
-        asset_dict["baseAttributes"] = process_base_attributes(base_attributes)
-    damage_type = getattr(asset, "damageType", None)
-    if damage_type:
-        asset_dict["damageType"] = get_asset_name(damage_type)
-    weapon_type = getattr(asset, "weaponType", None)
-    if weapon_type:
-        asset_dict["weaponType"] = get_asset_name(weapon_type)
-    caliber = getattr(asset, "caliber", None)
-    if caliber:
-        asset_dict["caliber"] = get_asset_name(caliber)
-    process_value(asset, "damageMultiplier", asset_dict, float)
-    kick_power = getattr(asset, "kickPower", None)
-    if kick_power and len(kick_power):
-        asset_dict["kickPower"] = process_caliber_attributes(kick_power)
-    spread_caliber = getattr(asset, "spreadPerCaliber", None)
-    if spread_caliber and len(spread_caliber):
-        asset_dict["spreadPerCaliber"] = process_caliber_attributes(spread_caliber)
-    process_value(asset, "adsEnabled", asset_dict, int)
-    process_value(asset, "overrideDamage", asset_dict, float)
-    process_value(asset, "bulletSpeed", asset_dict, float)
-    process_value(asset, "iAmmoMax", asset_dict, float)
-    process_value(asset, "shotsToReachFullSpread", asset_dict, int)
-    process_value(asset, "timeToCooldownSpread", asset_dict, float)
-    process_value(asset, "iMaxAmmoPerShot", asset_dict, int)
-    process_value(asset, "rpm", asset_dict, int)
-    process_value(asset, "cooldownBeforeReload", asset_dict, float)
-    return asset_dict
-
-
-def process_recipe(asset: MonoBehaviour) -> dict[str, Any]:
-    asset_dict: dict[str, Any] = {}
-    process_value(asset, "m_Name", asset_dict)
-    creates = getattr(asset, "createsItem", None)
-    if creates:
-        asset_dict["createsItem"] = get_asset_name(creates)
-    process_value(asset, "quantityCreated", asset_dict, int)
-    items_needed = getattr(asset, "itemsNeeded", None)
-    if items_needed:
-        new_items_needed = []
-        for entry in items_needed:
-            new_entry = {}
-            new_entry["item"] = get_asset_name(entry.item)
-            process_value(entry, "quantity", new_entry, int)
-            new_items_needed.append(new_entry)
-        asset_dict["itemsNeeded"] = new_items_needed
-    process_value(asset, "canBeCrafted", asset_dict, int)
+    for attr in attr_list:
+        value = getattr(asset, attr)
+        if type(value) is PPtr:
+            if value.path_id != 0:
+                value = get_asset_name(value)
+            else:
+                value = None
+        if type(value) is int2_storage:
+            value = {"x": value.x, "y": value.y}
+        elif type(value) is list:
+            new_list = []
+            for item in value:
+                new_item = process_asset(item)
+                new_list.append(new_item)
+            value = new_list
+        elif attr == "displayName" and "identifier" in attr_list:
+            value = get_translation(asset.identifier, global_language)
+        elif attr == "flavor" and "identifier" in attr_list:
+            value = get_translation(f"{asset.identifier}_flavor", global_language)
+        elif attr == "useType":
+            value = UseType(value).name
+        elif attr == "slotType":
+            value = SlotType(value).name
+        elif attr == "weightClass":
+            value = HoldableWeightClass(value).name
+        elif attr == "modType":
+            value = StatModType(value).name
+        elif attr == "buffType":
+            value = BuffType(value).name
+        elif attr == "itemQuality":
+            value = ItemQuality(value).name
+        elif attr == "appliesEnchantment":
+            value = get_enchantment_modifiers(value)
+        asset_dict[attr] = value
     return asset_dict
 
 
 def get_recipe_type_dir(asset: MonoBehaviour, destination_folder: str) -> str:
     global global_items
-    item: PPtr = getattr(asset, "createsItem", None)
+    item: PPtr | None = getattr(asset, "createsItem", None)
     if item:
         return get_item_type_dir(global_items[item.path_id], destination_folder)
     return destination_folder
@@ -413,18 +283,18 @@ def write_asset(asset: MonoBehaviour, path_id: int, destination_folder: str) -> 
         final_destination = get_item_type_dir(asset, destination_folder)
         name = get_translation(asset.identifier, global_language)
         asset_name_map[path_id] = name
-        tree = process_item(asset, name)
+        tree = process_asset(asset)
     if hasattr(asset, "createsItem"):
         if getattr(asset, "canBeCrafted", None):
             final_destination = get_recipe_type_dir(asset, destination_folder)
-            tree = process_recipe(asset)
+            tree = process_asset(asset)
             name = get_unique_recipe_name(tree)
         else:
             # Don't write uncraftable recipes
             return
     if hasattr(asset, "entries"):
         name = asset.m_Name
-        tree = process_loot_table(asset)
+        tree = process_asset(asset)
     file_name = clean_file_name(name).replace(" ", "")
     fp = os.path.join(final_destination, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
