@@ -48,7 +48,7 @@ args = parser.parse_args()
 global_language: str
 global_items: dict[int, MonoBehaviour] = {}
 global_recipes: dict[int, MonoBehaviour] = {}
-
+global_game_settings: MonoBehaviour | None = None
 global_loot_tables: dict[int, MonoBehaviour] = {}
 
 
@@ -57,6 +57,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     global global_items
     global global_language
     global global_loot_tables
+    global global_game_settings
 
     global_language = language
     unpack_dir = os.path.join(
@@ -84,6 +85,8 @@ def unpack_assets(source: str, version: str, language: str) -> None:
                         global_items[pptr.path_id] = data
                 else:
                     global_items[pptr.path_id] = data
+            if data.m_Name == "GameSettings_Normal":
+                global_game_settings = data
             if data.m_Name.startswith("Recipe_"):
                 global_recipes[pptr.path_id] = data
 
@@ -92,22 +95,28 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     if not os.path.exists(item_unpack_dir):
         os.makedirs(item_unpack_dir)
     for path_id, item in global_items.items():
-        process_asset(item)
-        write_asset(item, path_id, item_unpack_dir)
+        process_item(item, path_id, item_unpack_dir)
 
     print("Unpacking Recipes...")
     recipe_unpack_dir = f"{unpack_dir}/Recipes"
     if not os.path.exists(recipe_unpack_dir):
         os.makedirs(recipe_unpack_dir)
     for recipe in global_recipes.values():
-        write_asset(recipe, path_id, recipe_unpack_dir)
+        process_recipe(recipe, recipe_unpack_dir)
 
     print("Unpacking Loot Tables..")
     loot_table_unpack_dir = f"{unpack_dir}/Loot Tables"
     if not os.path.exists(loot_table_unpack_dir):
         os.makedirs(loot_table_unpack_dir)
-    for path_id, table in global_loot_tables.items():
-        write_asset(table, path_id, loot_table_unpack_dir)
+    for table in global_loot_tables.values():
+        process_loot_table(table, loot_table_unpack_dir)
+
+    # if global_game_settings:
+    #     settings_unpack_dir = f"{unpack_dir}/Game Settings"
+    #     if not os.path.exists(settings_unpack_dir):
+    #         os.makedirs(settings_unpack_dir)
+    #     for path_id, table in global_loot_tables.items():
+    #         write_asset(table, path_id, settings_unpack_dir)
 
     print("Generating Recipe List...")
     generate_recipe_list(unpack_dir, version)
@@ -204,7 +213,7 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
                 value = get_asset_name(value)
             else:
                 value = None
-        if type(value) is int2_storage:
+        elif type(value) is int2_storage:
             value = {"x": value.x, "y": value.y}
         elif type(value) is list:
             new_list = []
@@ -258,45 +267,45 @@ def get_unique_recipe_name(recipe: dict[str, Any]) -> str:
     return unique_name
 
 
-def process_loot_table(table: MonoBehaviour) -> dict[str, Any]:
-    result = {}
-    result["m_Name"] = table.m_Name
-    entries = []
-    for entry in table.entries:
-        if not entry.lootItem.path_id == 0:
-            item = {
-                "name": get_asset_name(entry.lootItem),
-                "lootWeight": entry.lootWeight,
-            }
-            entries.append(item)
-    result["entries"] = entries
-    return result
-
-
-def write_asset(asset: MonoBehaviour, path_id: int, destination_folder: str) -> None:
+def process_item(asset: MonoBehaviour, path_id: int, destination_folder: str) -> None:
     global asset_name_map
     global global_language
     final_destination = destination_folder
     name = ""
     tree: dict[str, Any] = {}
-    if hasattr(asset, "identifier"):
-        final_destination = get_item_type_dir(asset, destination_folder)
-        name = get_translation(asset.identifier, global_language)
-        asset_name_map[path_id] = name
+    final_destination = get_item_type_dir(asset, destination_folder)
+    name = get_translation(asset.identifier, global_language)
+    asset_name_map[path_id] = name
+    tree = process_asset(asset)
+    write_asset(tree, name, final_destination)
+
+
+def process_recipe(asset: MonoBehaviour, destination_folder: str) -> None:
+    final_destination = destination_folder
+    name = ""
+    tree: dict[str, Any] = {}
+    if getattr(asset, "canBeCrafted", None):
+        final_destination = get_recipe_type_dir(asset, destination_folder)
         tree = process_asset(asset)
-    if hasattr(asset, "createsItem"):
-        if getattr(asset, "canBeCrafted", None):
-            final_destination = get_recipe_type_dir(asset, destination_folder)
-            tree = process_asset(asset)
-            name = get_unique_recipe_name(tree)
-        else:
-            # Don't write uncraftable recipes
-            return
-    if hasattr(asset, "entries"):
-        name = asset.m_Name
-        tree = process_asset(asset)
+        name = get_unique_recipe_name(tree)
+    else:
+        # Don't write uncraftable recipes
+        return
+    write_asset(tree, name, final_destination)
+
+
+def process_loot_table(asset: MonoBehaviour, destination_folder: str) -> None:
+    final_destination = destination_folder
+    name = ""
+    tree: dict[str, Any] = {}
+    name = asset.m_Name
+    tree = process_asset(asset)
+    write_asset(tree, name, final_destination)
+
+
+def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
     file_name = clean_file_name(name).replace(" ", "")
-    fp = os.path.join(final_destination, f"{file_name}.json")
+    fp = os.path.join(path, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
         json.dump(tree, f, ensure_ascii=False, indent=4)
 
