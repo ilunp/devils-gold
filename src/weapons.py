@@ -22,7 +22,7 @@ def init_data(data_dir: str = TEMP_DATA_DIR) -> None:
     for path in weapon_types_path.rglob("*.json"):
         with path.open(encoding="utf-8") as source:
             weapon_type = json.load(source)
-            weapon_types[weapon_type["label"]] = weapon_type
+            weapon_types[weapon_type["itemDescriptionName"]] = weapon_type
     weapons_path = Path(data_dir).joinpath("Items").joinpath("Weapons")
     for path in weapons_path.rglob("*.json"):
         with path.open(encoding="utf-8") as source:
@@ -69,9 +69,10 @@ def generate_caliber_table(weapon: str, data_dir: str = TEMP_DATA_DIR) -> None:
             row_data.append(row)
     row_data.sort(key=row_sort)
     table = generate_wiki_table(columns, row_data)
+    with_title = "== Caliber Modding ==\n" + table
     with open(Path(data_dir).joinpath("wiki.txt"), "w", encoding="utf-8") as source:
-        source.write(table)
+        source.write(with_title)
 
 
 init_data()
-generate_caliber_table("Palehorse Topclipper")
+generate_caliber_table("Vrede")
