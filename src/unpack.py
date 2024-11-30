@@ -51,6 +51,7 @@ global_items: dict[int, MonoBehaviour] = {}
 global_recipes: dict[int, MonoBehaviour] = {}
 global_game_settings: MonoBehaviour | None = None
 global_loot_tables: dict[int, MonoBehaviour] = {}
+global_calibers: dict[int, MonoBehaviour] = {}
 
 
 def unpack_assets(source: str, version: str, language: str) -> None:
@@ -95,6 +96,11 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     item_unpack_dir = os.path.join(unpack_dir, "Items")
     for path_id, item in global_items.items():
         process_item(item, path_id, item_unpack_dir)
+
+    print("Unpacking Calibers...")
+    caliber_unpack_dir = os.path.join(unpack_dir, "Calibers")
+    for item in global_calibers.values():
+        process_caliber(item, caliber_unpack_dir)
 
     print("Unpacking Recipes...")
     recipe_unpack_dir = os.path.join(unpack_dir, "Recipes")
@@ -190,6 +196,7 @@ def get_enchantment_modifiers(enchantment: PPtr) -> list[dict[str, Any]]:
 
 
 def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
+    global global_calibers
     attr_list = [
         attr
         for attr in dir(asset)
@@ -202,6 +209,9 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
         value = getattr(asset, attr)
         if type(value) is PPtr:
             if value.path_id != 0:
+                if attr == "caliber":
+                    if value.path_id not in global_calibers:
+                        global_calibers[value.path_id] = value.deref_parse_as_object()
                 value = get_asset_name(value)
             else:
                 value = None
@@ -296,12 +306,10 @@ def process_recipe(asset: MonoBehaviour, destination_folder: str) -> None:
 
 
 def process_loot_table(asset: MonoBehaviour, destination_folder: str) -> None:
-    final_destination = destination_folder
-    name = ""
     tree: dict[str, Any] = {}
     name = asset.m_Name
     tree = process_asset(asset)
-    write_asset(tree, name, final_destination)
+    write_asset(tree, name, destination_folder)
 
 
 def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None:
@@ -326,6 +334,11 @@ def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None
                 level_obj = level.deref_parse_as_object()
                 processed_level = process_asset(level_obj)
                 write_asset(processed_level, level_obj.m_Name, level_dir)
+
+
+def process_caliber(asset: MonoBehaviour, destination_folder: str) -> None:
+    processed_caliber = process_asset(asset)
+    write_asset(processed_caliber, asset.m_Name, destination_folder)
 
 
 def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
