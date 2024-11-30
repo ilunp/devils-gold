@@ -48,7 +48,7 @@ def get_weapon_damage(weapon: str, caliber: str = None) -> float:
 
     damage = caliber_damage * type_damage_mult * weapon_damage_mult
 
-    return damage
+    return round(damage, 2)
 
 
 def row_sort(row: list[Any]) -> int:
@@ -74,4 +74,4 @@ def generate_caliber_table(weapon: str, data_dir: str = TEMP_DATA_DIR) -> None:
 
 
 init_data()
-generate_caliber_table("P38 Dirk")
+generate_caliber_table("Palehorse Topclipper")
