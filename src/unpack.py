@@ -52,6 +52,7 @@ global_recipes: dict[int, MonoBehaviour] = {}
 global_game_settings: MonoBehaviour | None = None
 global_loot_tables: dict[int, MonoBehaviour] = {}
 global_calibers: dict[int, MonoBehaviour] = {}
+global_weapon_types: dict[int, MonoBehaviour] = {}
 
 
 def unpack_assets(source: str, version: str, language: str) -> None:
@@ -100,7 +101,12 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     print("Unpacking Calibers...")
     caliber_unpack_dir = os.path.join(unpack_dir, "Calibers")
     for item in global_calibers.values():
-        process_caliber(item, caliber_unpack_dir)
+        process_basic(item, caliber_unpack_dir)
+
+    print("Unpacking Weapon Types...")
+    weapon_type_unpack_dir = os.path.join(unpack_dir, "Weapon Types")
+    for item in global_weapon_types.values():
+        process_basic(item, weapon_type_unpack_dir)
 
     print("Unpacking Recipes...")
     recipe_unpack_dir = os.path.join(unpack_dir, "Recipes")
@@ -110,7 +116,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     print("Unpacking Loot Tables..")
     loot_table_unpack_dir = os.path.join(unpack_dir, "Loot Tables")
     for table in global_loot_tables.values():
-        process_loot_table(table, loot_table_unpack_dir)
+        process_basic(table, loot_table_unpack_dir)
 
     print("Unpacking Game Settings...")
     settings_unpack_dir = os.path.join(unpack_dir, "Game Settings")
@@ -197,6 +203,7 @@ def get_enchantment_modifiers(enchantment: PPtr) -> list[dict[str, Any]]:
 
 def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
     global global_calibers
+    global global_weapon_types
     attr_list = [
         attr
         for attr in dir(asset)
@@ -212,6 +219,11 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
                 if attr == "caliber":
                     if value.path_id not in global_calibers:
                         global_calibers[value.path_id] = value.deref_parse_as_object()
+                if attr == "weaponType":
+                    if value.path_id not in global_calibers:
+                        global_weapon_types[value.path_id] = (
+                            value.deref_parse_as_object()
+                        )
                 value = get_asset_name(value)
             else:
                 value = None
@@ -305,13 +317,6 @@ def process_recipe(asset: MonoBehaviour, destination_folder: str) -> None:
     write_asset(tree, name, final_destination)
 
 
-def process_loot_table(asset: MonoBehaviour, destination_folder: str) -> None:
-    tree: dict[str, Any] = {}
-    name = asset.m_Name
-    tree = process_asset(asset)
-    write_asset(tree, name, destination_folder)
-
-
 def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None:
     processed_settings = process_asset(asset)
     write_asset(processed_settings, asset.m_Name, destination_folder)
@@ -336,9 +341,9 @@ def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None
                 write_asset(processed_level, level_obj.m_Name, level_dir)
 
 
-def process_caliber(asset: MonoBehaviour, destination_folder: str) -> None:
-    processed_caliber = process_asset(asset)
-    write_asset(processed_caliber, asset.m_Name, destination_folder)
+def process_basic(asset: MonoBehaviour, destination_folder: str) -> None:
+    processed_asset = process_asset(asset)
+    write_asset(processed_asset, asset.m_Name, destination_folder)
 
 
 def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
