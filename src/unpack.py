@@ -5,7 +5,7 @@ import argparse
 import json
 from translations import extract_translations, get_translation
 from typing import Any
-from sulfur import (
+from sulfur_enums import (
     UseType,
     ItemQuality,
     SlotType,
