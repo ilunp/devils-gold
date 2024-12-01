@@ -13,7 +13,10 @@ from sulfur_enums import (
     BuffType,
     StatModType,
     ItemType,
+    UnitType,
+    AgentRole,
 )
+from sulfur_types import Unit, Faction, AttributeContainerNew
 from utils import clean_file_name, create_uuid_from_string
 from recipe import generate_recipe_list
 
@@ -53,13 +56,11 @@ global_game_settings: MonoBehaviour | None = None
 global_loot_tables: dict[int, MonoBehaviour] = {}
 global_calibers: dict[int, MonoBehaviour] = {}
 global_weapon_types: dict[int, MonoBehaviour] = {}
+global_units: dict[int, MonoBehaviour] = {}
 
 
 def unpack_assets(source: str, version: str, language: str) -> None:
-    global global_recipes
-    global global_items
     global global_language
-    global global_loot_tables
     global global_game_settings
 
     global_language = language
@@ -92,21 +93,28 @@ def unpack_assets(source: str, version: str, language: str) -> None:
                 global_game_settings = data
             if data.m_Name.startswith("Recipe_"):
                 global_recipes[pptr.path_id] = data
+            if hasattr(data, "unitType"):
+                global_units[pptr.path_id] = data
 
-    print("Unpacking Items...")
-    item_unpack_dir = os.path.join(unpack_dir, "Items")
-    for path_id, item in global_items.items():
-        process_item(item, path_id, item_unpack_dir)
+    # print("Unpacking Items...")
+    # item_unpack_dir = os.path.join(unpack_dir, "Items")
+    # for path_id, item in global_items.items():
+    #     process_item(item, path_id, item_unpack_dir)
 
-    print("Unpacking Calibers...")
-    caliber_unpack_dir = os.path.join(unpack_dir, "Calibers")
-    for item in global_calibers.values():
-        process_basic(item, caliber_unpack_dir)
+    # print("Unpacking Calibers...")
+    # caliber_unpack_dir = os.path.join(unpack_dir, "Calibers")
+    # for item in global_calibers.values():
+    #     process_basic(item, caliber_unpack_dir)
 
     print("Unpacking Weapon Types...")
     weapon_type_unpack_dir = os.path.join(unpack_dir, "Weapon Types")
     for item in global_weapon_types.values():
         process_basic(item, weapon_type_unpack_dir)
+
+    print("Unpacking Units...")
+    unit_unpack_dir = os.path.join(unpack_dir, "Units")
+    for item in global_units.values():
+        process_unit(item, unit_unpack_dir)
 
     print("Unpacking Recipes...")
     recipe_unpack_dir = os.path.join(unpack_dir, "Recipes")
@@ -344,6 +352,45 @@ def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None
 def process_basic(asset: MonoBehaviour, destination_folder: str) -> None:
     processed_asset = process_asset(asset)
     write_asset(processed_asset, asset.m_Name, destination_folder)
+
+
+def process_character_base_attr(attrib: MonoBehaviour) -> AttributeContainerNew:
+    attrib_type = attrib.type.deref_parse_as_dict()["itemDescriptionName"]
+    result: AttributeContainerNew = {}
+    result["type"] = attrib_type
+    result["value"] = attrib.value
+    return result
+
+
+def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
+    asset_dict: Unit = {}
+    for key, type in Unit.__annotations__.items():
+        value = getattr(asset, key)
+        if key == "displayName":
+            value = get_translation(value, global_language, "UnitNames")
+        # elif key == "unitType":
+        #     value = UnitType(value).name
+        elif key == "faction":
+            if value.path_id == 0:
+                value = None
+            else:
+                value = value.deref_parse_as_dict()["prettyLabel"]
+        elif key == "rolesAvailable":
+            new_roles = []
+            for role in value:
+                new_roles.append(AgentRole(role).name)
+            value = new_roles
+        elif key == "characterBaseAttributesNew":
+            new_attribs = []
+            for attrib in value:
+                new_attrib = process_character_base_attr(attrib)
+                new_attribs.append(new_attrib)
+            value = new_attribs
+        else:
+            value = type(value)
+        asset_dict[key] = value
+    final_destination = os.path.join(destination_folder, str(asset_dict["faction"]))
+    write_asset(asset_dict, asset_dict["displayName"], final_destination)
 
 
 def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
