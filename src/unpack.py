@@ -57,6 +57,7 @@ global_loot_tables: dict[int, MonoBehaviour] = {}
 global_calibers: dict[int, MonoBehaviour] = {}
 global_weapon_types: dict[int, MonoBehaviour] = {}
 global_units: dict[int, MonoBehaviour] = {}
+global_npcs: dict[int, MonoBehaviour] = {}
 
 
 def unpack_assets(source: str, version: str, language: str) -> None:
@@ -95,16 +96,18 @@ def unpack_assets(source: str, version: str, language: str) -> None:
                 global_recipes[pptr.path_id] = data
             if hasattr(data, "unitType"):
                 global_units[pptr.path_id] = data
+            if hasattr(data, "meleeDamageType"):
+                global_npcs[pptr.path_id] = data
 
-    # print("Unpacking Items...")
-    # item_unpack_dir = os.path.join(unpack_dir, "Items")
-    # for path_id, item in global_items.items():
-    #     process_item(item, path_id, item_unpack_dir)
+    print("Unpacking Items...")
+    item_unpack_dir = os.path.join(unpack_dir, "Items")
+    for path_id, item in global_items.items():
+        process_item(item, path_id, item_unpack_dir)
 
-    # print("Unpacking Calibers...")
-    # caliber_unpack_dir = os.path.join(unpack_dir, "Calibers")
-    # for item in global_calibers.values():
-    #     process_basic(item, caliber_unpack_dir)
+    print("Unpacking Calibers...")
+    caliber_unpack_dir = os.path.join(unpack_dir, "Calibers")
+    for item in global_calibers.values():
+        process_basic(item, caliber_unpack_dir)
 
     print("Unpacking Weapon Types...")
     weapon_type_unpack_dir = os.path.join(unpack_dir, "Weapon Types")
@@ -116,6 +119,11 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     for item in global_units.values():
         process_unit(item, unit_unpack_dir)
 
+    print("Unpacking NPCs")
+    npc_unpack_dir = os.path.join(unpack_dir, "NPCs")
+    for path_id, item in global_npcs.items():
+        process_npc(item, npc_unpack_dir, path_id)
+
     print("Unpacking Recipes...")
     recipe_unpack_dir = os.path.join(unpack_dir, "Recipes")
     for recipe in global_recipes.values():
@@ -123,7 +131,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
 
     print("Unpacking Loot Tables..")
     loot_table_unpack_dir = os.path.join(unpack_dir, "Loot Tables")
-    for table in global_loot_tables.values():
+    for path_id, table in global_loot_tables.items():
         process_basic(table, loot_table_unpack_dir)
 
     print("Unpacking Game Settings...")
@@ -352,6 +360,14 @@ def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None
 def process_basic(asset: MonoBehaviour, destination_folder: str) -> None:
     processed_asset = process_asset(asset)
     write_asset(processed_asset, asset.m_Name, destination_folder)
+
+
+def process_npc(asset: MonoBehaviour, destination_folder: str, path_id: int) -> None:
+    processed_asset = process_asset(asset)
+    if processed_asset["weaponPrefab"]:
+        breakpoint()
+    name = f"{processed_asset["unitSO"]}_{path_id}"
+    write_asset(processed_asset, name, destination_folder)
 
 
 def process_character_base_attr(attrib: MonoBehaviour) -> AttributeContainerNew:
