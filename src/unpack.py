@@ -84,12 +84,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
             if hasattr(data, "entries") and "Demo" not in data.m_Name:
                 global_loot_tables[pptr.path_id] = data
             if hasattr(data, "useType"):
-                if hasattr(data, "usableByPlayer"):
-                    if data.usableByPlayer:
-                        # Don't select monster weapons
-                        global_items[pptr.path_id] = data
-                else:
-                    global_items[pptr.path_id] = data
+                global_items[pptr.path_id] = data
             if data.m_Name == "GameSettings_Normal":
                 global_game_settings = data
             if data.m_Name.startswith("Recipe_"):
@@ -147,13 +142,14 @@ def unpack_assets(source: str, version: str, language: str) -> None:
 def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
     identifier = getattr(asset, "identifier", "")
     use_type = getattr(asset, "useType", "")
+    slot_type = getattr(asset, "slotType", "")
     dir = ""
     if "Consumable_ChamberChisel" in identifier:
         dir = "Chisels"
     elif "Valuable" in identifier:
         dir = "Valuables"
     elif UseType(use_type) == UseType["Equippable"]:
-        if identifier.startswith("Weapon_"):
+        if SlotType(slot_type) == SlotType["Weapon"]:
             dir = "Weapons"
         else:
             dir = "Equipment"
@@ -364,8 +360,6 @@ def process_basic(asset: MonoBehaviour, destination_folder: str) -> None:
 
 def process_npc(asset: MonoBehaviour, destination_folder: str, path_id: int) -> None:
     processed_asset = process_asset(asset)
-    if processed_asset["weaponPrefab"]:
-        breakpoint()
     name = f"{processed_asset["unitSO"]}_{path_id}"
     write_asset(processed_asset, name, destination_folder)
 

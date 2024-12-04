@@ -75,4 +75,5 @@ def generate_caliber_table(weapon: str, data_dir: str = TEMP_DATA_DIR) -> None:
 
 
 init_data()
-generate_caliber_table("Vrede")
+# generate_caliber_table("Vrede")
+print(get_weapon_damage("Goblin Bow"))
