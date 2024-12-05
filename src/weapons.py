@@ -9,7 +9,7 @@ weapon_types = {}
 calibers = {}
 weapons = {}
 
-TEMP_DATA_DIR = r"C:\Users\clemf\code\devils-gold\unpacked\SULFUR_test"
+TEMP_DATA_DIR = r"C:\Users\clemf\code\devils-gold\unpacked\SULFUR_0-9-13"
 
 
 def init_data(data_dir: str = TEMP_DATA_DIR) -> None:
@@ -59,13 +59,22 @@ def generate_caliber_table(weapon: str, data_dir: str = TEMP_DATA_DIR) -> None:
     columns = ["Caliber", "Damage", "Spread", "Projectiles"]
     row_data = []
     weapon_def = weapons[weapon]
-    for name, caliber in calibers.items():
+    spread_list = weapon_def["spreadPerCaliber"]
+    for caliber_spread in spread_list:
+        caliber_name = caliber_spread["Caliber"]
+        caliber = calibers[caliber_name]
         if caliber["CanBeCaliberModded"]:
-            damage = get_weapon_damage(weapon, name)
-            spread_list = weapon_def["spreadPerCaliber"]
-            spread = next((x for x in spread_list if x["Caliber"] == name))["Spread"]
+            damage = get_weapon_damage(weapon, caliber_name)
+            spread = next((x for x in spread_list if x["Caliber"] == caliber_name))[
+                "Spread"
+            ]
             projectiles = caliber["numberOfProjectiles"]
-            row = [name, format_number(damage), format_number(spread), projectiles]
+            row = [
+                caliber_name,
+                format_number(damage),
+                format_number(spread),
+                projectiles,
+            ]
             row_data.append(row)
     row_data.sort(key=row_sort)
     table = generate_wiki_table(columns, row_data)
@@ -75,5 +84,4 @@ def generate_caliber_table(weapon: str, data_dir: str = TEMP_DATA_DIR) -> None:
 
 
 init_data()
-# generate_caliber_table("Vrede")
-print(get_weapon_damage("Goblin Bow"))
+generate_caliber_table("Salamander")
