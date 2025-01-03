@@ -9,7 +9,7 @@ weapon_types = {}
 calibers = {}
 weapons = {}
 
-TEMP_DATA_DIR = r"C:\Users\clemf\code\devils-gold\unpacked\SULFUR_0-9-13"
+TEMP_DATA_DIR = r"C:\Users\clemf\code\devils-gold\unpacked\SULFUR_0-9-15"
 
 
 def init_data(data_dir: str = TEMP_DATA_DIR) -> None:

@@ -23,7 +23,7 @@ def generate_recipe_list(data_path: str, version: str) -> None:
             masterlist += os.path.basename(root) + "\n\n"
             for file in files:
                 file_path = os.path.join(root, file)
-                with open(file_path) as jsonFile:
+                with open(file_path, encoding="utf8") as jsonFile:
                     recipeText = ""
                     rawJson = json.load(jsonFile)
                     items = rawJson["itemsNeeded"]
@@ -33,5 +33,5 @@ def generate_recipe_list(data_path: str, version: str) -> None:
                     masterlist += recipeText + "\n"
             masterlist += "\n\n"
     output_path = os.path.join(data_path, "recipes.txt")
-    with open(output_path, "w") as newFile:
+    with open(output_path, "w", encoding="utf8") as newFile:
         newFile.write(masterlist)

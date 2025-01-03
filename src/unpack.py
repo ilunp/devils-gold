@@ -67,7 +67,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     global_language = language
     unpack_dir = os.path.join(
         DEFAULT_UNPACK_DIR,
-        "SULFUR_" + clean_file_name(version).replace(".", "-"),
+        "SULFUR_" + clean_file_name(version).replace(".", "-") + "_" + clean_file_name(language).replace(".", "-"),
     )
     if not os.path.exists(unpack_dir):
         os.makedirs(unpack_dir)
