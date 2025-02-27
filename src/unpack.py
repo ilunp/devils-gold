@@ -209,7 +209,7 @@ def get_enchantment_modifiers(enchantment: PPtr) -> list[dict[str, Any]]:
     modifiers = []
     asset = enchantment.deref_parse_as_object()
     for modifier in asset.modifiersApplied:
-        modifiers.append(process_asset(modifier))
+        modifiers.append(process_asset(modifier)) 
     return modifiers
 
 
@@ -228,15 +228,19 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
         value = getattr(asset, attr)
         if type(value) is PPtr:
             if value.path_id != 0:
-                if attr == "caliber":
-                    if value.path_id not in global_calibers:
-                        global_calibers[value.path_id] = value.deref_parse_as_object()
-                if attr == "weaponType":
-                    if value.path_id not in global_calibers:
-                        global_weapon_types[value.path_id] = (
-                            value.deref_parse_as_object()
-                        )
-                value = get_asset_name(value)
+                if attr == "appliesEnchantment":
+                    value = get_enchantment_modifiers(value)
+                    print(f"{attr}: {value}")
+                else:
+                    if attr == "caliber":
+                        if value.path_id not in global_calibers:
+                            global_calibers[value.path_id] = value.deref_parse_as_object()
+                    if attr == "weaponType":
+                        if value.path_id not in global_calibers:
+                            global_weapon_types[value.path_id] = (
+                                value.deref_parse_as_object()
+                            )
+                    value = get_asset_name(value)
             else:
                 value = None
         elif type(value) is int2_storage:
@@ -270,8 +274,8 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
             value = BuffType(value).name
         elif attr == "itemQuality":
             value = ItemQuality(value).name
-        elif attr == "appliesEnchantment":
-            value = get_enchantment_modifiers(value)
+        # elif attr == "appliesEnchantment":
+            # value = get_enchantment_modifiers(value)
         elif attr == "itemType":
             value = ItemType(value).name
         asset_dict[attr] = value
