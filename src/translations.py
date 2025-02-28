@@ -31,7 +31,7 @@ languages = {
 
 def extract_translations(path: str, unpack_dir: str) -> None:
     global translations_path
-    file_path = os.path.join(path, "resources.assets")
+    file_path = os.path.join(path, "resources_old.assets")
     unpack_path = os.path.join(unpack_dir, "translations.csv")
     writer = parsers.rawCSV.Writer
     assets = read_assets(file_path)

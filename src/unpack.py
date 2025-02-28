@@ -230,7 +230,6 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
             if value.path_id != 0:
                 if attr == "appliesEnchantment":
                     value = get_enchantment_modifiers(value)
-                    print(f"{attr}: {value}")
                 else:
                     if attr == "caliber":
                         if value.path_id not in global_calibers:
@@ -351,7 +350,7 @@ def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None
                 act_dir, f"{index + 1}_{environment_obj.environmentName}"
             )
             write_asset(processed_env, environment_obj.m_Name, level_dir)
-            for level in environment_obj.levelList:
+            for level in environment_obj.levels:
                 level_obj = level.deref_parse_as_object()
                 processed_level = process_asset(level_obj)
                 write_asset(processed_level, level_obj.m_Name, level_dir)
