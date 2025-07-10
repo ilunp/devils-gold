@@ -67,7 +67,7 @@ ItemQuality = Enum(
 )
 
 StatModType = Enum(
-    "StatModType", [("Flat", 100), ("PercentAdd", 200), ("PercentMult", 300)]
+    "StatModType", [("NONE", 0),("Flat", 100), ("PercentAdd", 200), ("PercentMult", 300)]
 )
 
 BuffType = Enum("BuffType", [("Attribute", 0), ("Status", 1)])
