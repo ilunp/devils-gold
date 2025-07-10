@@ -75,7 +75,9 @@ BuffType = Enum("BuffType", [("Attribute", 0), ("Status", 1)])
 # Units
 
 UnitType = Enum(
-    "UnitType", [("Melee", 1), ("Ranged", 2), ("Flying", 3), ("Boss", 4), ("Big", 0x10)]
+    "UnitType", [("Melee", 1), ("Ranged", 2), ("Flying", 4), ("Boss", 8), ("Big", 16)]
 )
 
 AgentRole = Enum("AgentRole", [("Offensive", 0), ("Defensive", 1)])
+
+ProjectileTypes = Enum("ProjectileTypes",[("None", 0),("Bullet", 1),("Arrow", 2),("Laser", 3),("Snowball", 4),("End", 5)],)

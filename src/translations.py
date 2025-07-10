@@ -1,6 +1,7 @@
 from pyI2L import read_assets, write_output, parsers
 import csv
 import os
+import UnityPy
 
 """
 Translations are important for getting the correct data.
@@ -31,7 +32,16 @@ languages = {
 
 def extract_translations(path: str, unpack_dir: str) -> None:
     global translations_path
-    file_path = os.path.join(path, "resources_old.assets")
+    file_path = os.path.join("src/resources_old.assets")
+    # file_path = os.path.join(path, "resources.assets")
+    # file_path = os.path.join(path, "StreamingAssets/aa/StandaloneWindows64/defaultlocalgroup_assets_all_67e39e85b4ff7f4a7688c36ed26e76c9.bundle")
+    # env = UnityPy.load(file_path)
+    # # We need to find the correct file in the bundle
+    # for ojb in env.objects:
+    #     if ojb.type.name == "MonoBehaviour":
+    #         if ojb.name == "translations":
+    #             file_path = ojb.read()
+    #             break
     unpack_path = os.path.join(unpack_dir, "translations.csv")
     writer = parsers.rawCSV.Writer
     assets = read_assets(file_path)

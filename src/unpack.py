@@ -59,6 +59,8 @@ global_weapon_types: dict[int, MonoBehaviour] = {}
 global_units: dict[int, MonoBehaviour] = {}
 global_npcs: dict[int, MonoBehaviour] = {}
 
+global_achievements: dict[int, MonoBehaviour] = {}
+
 
 def unpack_assets(source: str, version: str, language: str) -> None:
     global global_language
@@ -93,6 +95,8 @@ def unpack_assets(source: str, version: str, language: str) -> None:
                 global_units[pptr.path_id] = data
             if hasattr(data, "meleeDamageType"):
                 global_npcs[pptr.path_id] = data
+            if data.m_Name.startswith("Achievement_"):
+                global_achievements[pptr.path_id] = data
 
     print("Unpacking Items...")
     item_unpack_dir = os.path.join(unpack_dir, "Items")
@@ -133,6 +137,11 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     settings_unpack_dir = os.path.join(unpack_dir, "Game Settings")
     process_game_settings(global_game_settings, settings_unpack_dir)
 
+    print("Unpacking Achievements...")
+    achievement_unpack_dir = os.path.join(unpack_dir, "Achievements")
+    for achievement in global_achievements.values():
+        process_achievement(achievement, achievement_unpack_dir)
+
     print("Generating Recipe List...")
     generate_recipe_list(unpack_dir, version)
 
@@ -149,7 +158,7 @@ def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
     elif "Valuable" in identifier:
         dir = "Valuables"
     elif UseType(use_type) == UseType["Equippable"]:
-        if SlotType(slot_type) == SlotType["Weapon"]:
+        if SlotType(slot_type) == SlotType["Weapon"] or "Weapon" in identifier:
             dir = "Weapons"
         else:
             dir = "Equipment"
@@ -206,11 +215,66 @@ def get_asset_name(pptr: PPtr) -> str:
 
 
 def get_enchantment_modifiers(enchantment: PPtr) -> list[dict[str, Any]]:
-    modifiers = []
+    enchantment_modifiers = []
     asset = enchantment.deref_parse_as_object()
-    for modifier in asset.modifiersApplied:
-        modifiers.append(process_asset(modifier)) 
-    return modifiers
+    for en_modifier in asset.modifiersApplied:
+        en_modifier_dict = process_asset(en_modifier)
+        arrt = en_modifier.attribute.deref_parse_as_dict()
+        en_modifier_dict["showInItemDescription"] = arrt.get("showInItemDescription", 0)
+        en_modifier_dict["isBooleanAttribute"] = arrt.get("isBooleanAttribute", 0)
+        en_modifier_dict["isPercentageAttribute"] = arrt.get("isPercentageAttribute", 0)
+        en_modifier_dict["simplifiedModAmount"] = arrt.get("simplifiedModAmount", 0)
+        en_modifier_dict["simplifiedIncreaseString"] = arrt.get("simplifiedIncreaseString", "")
+        en_modifier_dict["simplifiedDecreaseString"] = arrt.get("simplifiedDecreaseString", "")
+        enchantment_modifiers.append(en_modifier_dict)
+    return enchantment_modifiers
+
+
+def get_equipnew_modifiers(equipnew: list[PPtr]) -> list[dict[str, Any]]:
+    equipnew_modifiers = []
+    for eq_modifier in equipnew:
+        eq_modifier_dict = process_asset(eq_modifier)
+        arrt = eq_modifier.attribute.deref_parse_as_dict()
+        eq_modifier_dict["showInItemDescription"] = arrt.get("showInItemDescription", 0)
+        eq_modifier_dict["isBooleanAttribute"] = arrt.get("isBooleanAttribute", 0)
+        eq_modifier_dict["isPercentageAttribute"] = arrt.get("isPercentageAttribute", 0)
+        equipnew_modifiers.append(eq_modifier_dict)
+    return equipnew_modifiers
+
+
+def get_buffsonconsume_modifiers(buffsonconsume: list[PPtr]) -> list[dict[str, Any]]:
+    buffsonconsume_modifiers = []
+    for bu_modifier in buffsonconsume:
+        bu_modifier_dict = process_asset(bu_modifier)
+        arrt = bu_modifier.attributeNew.deref_parse_as_dict()
+        bu_modifier_dict["showInItemDescription"] = arrt.get("showInItemDescription", 0)
+        bu_modifier_dict["isBooleanAttribute"] = arrt.get("isBooleanAttribute", 0)
+        bu_modifier_dict["isPercentageAttribute"] = arrt.get("isPercentageAttribute", 0)
+        buffsonconsume_modifiers.append(bu_modifier_dict)
+    return buffsonconsume_modifiers
+
+def get_attach_modifiers(attach: list[PPtr]) -> list[dict[str, Any]]:
+    attach_modifiers = []
+    for at_modifier in attach:
+        at_modifier_dict = process_asset(at_modifier)
+        arrt = at_modifier.attribute.deref_parse_as_dict()
+        at_modifier_dict["showInItemDescription"] = arrt.get("showInItemDescription", 0)
+        at_modifier_dict["isBooleanAttribute"] = arrt.get("isBooleanAttribute", 0)
+        at_modifier_dict["isPercentageAttribute"] = arrt.get("isPercentageAttribute", 0)
+        attach_modifiers.append(at_modifier_dict)
+    return attach_modifiers
+
+
+def process_achievement(asset: MonoBehaviour, destination_folder: str) -> None:
+    processed_asset = process_asset(asset)
+    # Get proper display name from translations
+    if hasattr(asset, 'identifier'):
+        display_name = get_translation(asset.identifier, global_language)
+        processed_asset['displayName'] = display_name
+    if hasattr(asset, 'descriptionIdentifier'):
+        description = get_translation(asset.descriptionIdentifier, global_language)
+        processed_asset['description'] = description
+    write_asset(processed_asset, asset.m_Name, destination_folder)
 
 
 def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
@@ -221,7 +285,7 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
         for attr in dir(asset)
         if not attr.startswith("_")
         and attr not in ["m_Enabled", "m_Script", "m_GameObject", "assets_file"]
-        and type(getattr(asset, attr)) in [int, float, str, PPtr, list, int2_storage]
+        and type(getattr(asset, attr)) in [int, float, str, PPtr, list, int2_storage, bool]
     ]
     asset_dict = {}
     for attr in attr_list:
@@ -245,18 +309,25 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
         elif type(value) is int2_storage:
             value = {"x": value.x, "y": value.y}
         elif type(value) is list:
-            new_list = []
-            for item in value:
-                new_item: Any | None = None
-                if type(item) is PPtr:
-                    if item.path_id == 0:
-                        new_item = None
+            if attr == "modifiersOnEquipNew":
+                value = get_equipnew_modifiers(value)
+            elif attr == "modifiersOnAttachToItem":
+                value = get_attach_modifiers(value)
+            elif attr == "buffsOnConsume":
+                value = get_buffsonconsume_modifiers(value)
+            else:
+                new_list = []
+                for item in value:
+                    new_item: Any | None = None
+                    if type(item) is PPtr:
+                        if item.path_id == 0:
+                            new_item = None
+                        else:
+                            new_item = get_asset_name(item)
                     else:
-                        new_item = get_asset_name(item)
-                else:
-                    new_item = process_asset(item)
-                new_list.append(new_item)
-            value = new_list
+                        new_item = process_asset(item)
+                    new_list.append(new_item)
+                value = new_list
         elif attr == "displayName" and "identifier" in attr_list:
             value = get_translation(asset.identifier, global_language)
         elif attr == "flavor" and "identifier" in attr_list:
@@ -267,7 +338,7 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
             value = SlotType(value).name
         elif attr == "weightClass":
             value = HoldableWeightClass(value).name
-        elif attr == "modType":
+        elif attr == "modType" or attr == "StatModType":
             value = StatModType(value).name
         elif attr == "buffType":
             value = BuffType(value).name
@@ -382,7 +453,7 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
         if key == "displayName":
             value = get_translation(value, global_language, "UnitNames")
         # elif key == "unitType":
-        #     value = UnitType(value).name
+            # value = UnitType(value).name
         elif key == "faction":
             if value.path_id == 0:
                 value = None
@@ -410,7 +481,28 @@ def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
     if not os.path.exists(path):
         os.makedirs(path)
     file_name = clean_file_name(name).replace(" ", "")
-    fp = os.path.join(path, f"{file_name}.json")
+    base_name = file_name
+    counter = 1
+
+    if "Item" in path:
+        while True:
+            fp = os.path.join(path, f"{file_name}.json")
+            if not os.path.exists(fp):
+                break
+
+            with open(fp, "rt", encoding="utf8") as f:
+                existing_data = json.load(f)
+
+            if (tree.get("displayName") == existing_data.get("displayName") and
+                tree.get("identifier") == existing_data.get("identifier") and
+                tree.get("m_Name") == existing_data.get("m_Name") and
+                tree.get("itemDescriptionName") == existing_data.get("itemDescriptionName")):
+                return
+
+            file_name = f"{base_name}_{counter}"
+            counter += 1
+    else:
+        fp = os.path.join(path, f"{file_name}.json")
     with open(fp, "wt", encoding="utf8") as f:
         json.dump(tree, f, ensure_ascii=False, indent=4)
 
