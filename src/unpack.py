@@ -149,16 +149,20 @@ def unpack_assets(source: str, version: str, language: str) -> None:
 
 
 def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
-    identifier = getattr(asset, "identifier", "")
+    # identifier = getattr(asset, "identifier", "")
+    m_Name = getattr(asset, "m_Name", "")
     use_type = getattr(asset, "useType", "")
     slot_type = getattr(asset, "slotType", "")
     dir = ""
-    if "Consumable_ChamberChisel" in identifier:
+    # if "Consumable_ChamberChisel" in identifier:
+    if "Consumable_ChamberChisel" in m_Name:
         dir = "Chisels"
-    elif "Valuable" in identifier:
+    # elif "Valuable" in identifier:
+    elif "Valuable" in m_Name:
         dir = "Valuables"
     elif UseType(use_type) == UseType["Equippable"]:
-        if SlotType(slot_type) == SlotType["Weapon"] or "Weapon" in identifier:
+        # if SlotType(slot_type) == SlotType["Weapon"] or "Weapon" in identifier:
+        if SlotType(slot_type) == SlotType["Weapon"] or "Weapon" in m_Name:
             dir = "Weapons"
         else:
             dir = "Equipment"
@@ -170,7 +174,8 @@ def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
         dir = "Attachments"
     elif UseType(use_type) == UseType["Enchantment"]:
         # Feature Gun Oil for some reason does not have Oil in the identifier
-        if "Oil" in identifier or "FeatureGun" in identifier:
+        # if "Oil" in identifier or "FeatureGun" in identifier:
+        if "Oil" in m_Name or "FeatureGun" in m_Name:
             dir = "Oils"
         else:
             dir = "Scrolls"
@@ -187,8 +192,6 @@ def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
 
 
 asset_name_map: dict[int, str] = {}
-
-
 def get_asset_name(pptr: PPtr) -> str:
     global asset_name_map
     path_id = pptr.path_id
@@ -197,8 +200,10 @@ def get_asset_name(pptr: PPtr) -> str:
     else:
         asset = pptr.deref_parse_as_dict()
         name = ""
-        if "displayName" in asset and "identifier" in asset:
-            translated = get_translation(asset["identifier"], global_language)
+        # if "displayName" in asset and "identifier" in asset:
+        if "displayName" in asset and "m_Name" in asset:
+            # translated = get_translation(asset["identifier"], global_language)
+            translated = get_translation(asset["m_Name"], global_language)
             name = translated
         elif "itemDescriptionName" in asset and len(asset["itemDescriptionName"]):
             name = asset["itemDescriptionName"]
@@ -268,11 +273,15 @@ def get_attach_modifiers(attach: list[PPtr]) -> list[dict[str, Any]]:
 def process_achievement(asset: MonoBehaviour, destination_folder: str) -> None:
     processed_asset = process_asset(asset)
     # Get proper display name from translations
-    if hasattr(asset, 'identifier'):
-        display_name = get_translation(asset.identifier, global_language)
+    # if hasattr(asset, 'identifier'):
+    if hasattr(asset, 'm_Name'):
+        # display_name = get_translation(asset.identifier, global_language)
+        display_name = get_translation(asset.m_Name, global_language)
         processed_asset['displayName'] = display_name
-    if hasattr(asset, 'descriptionIdentifier'):
-        description = get_translation(asset.descriptionIdentifier, global_language)
+    # if hasattr(asset, 'descriptionIdentifier'):
+    if hasattr(asset, 'description'):
+        # description = get_translation(asset.descriptionIdentifier, global_language)
+        description = get_translation(asset.description, global_language)
         processed_asset['description'] = description
     write_asset(processed_asset, asset.m_Name, destination_folder)
 
@@ -285,11 +294,14 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
         for attr in dir(asset)
         if not attr.startswith("_")
         and attr not in ["m_Enabled", "m_Script", "m_GameObject", "assets_file"]
-        and type(getattr(asset, attr)) in [int, float, str, PPtr, list, int2_storage, bool]
+        and type(getattr(asset, attr)) in [int, float, str, PPtr, list, int2_storage, bool, dict]
     ]
+    if hasattr(asset, 'id') and 'id' not in attr_list:
+        attr_list.append('id')
     asset_dict = {}
     for attr in attr_list:
         value = getattr(asset, attr)
+
         if type(value) is PPtr:
             if value.path_id != 0:
                 if attr == "appliesEnchantment":
@@ -314,7 +326,7 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
             elif attr == "modifiersOnAttachToItem":
                 value = get_attach_modifiers(value)
             elif attr == "buffsOnConsume":
-                value = get_buffsonconsume_modifiers(value)
+                value = get_buffsonconsume_modifiers(value) 
             else:
                 new_list = []
                 for item in value:
@@ -328,10 +340,23 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
                         new_item = process_asset(item)
                     new_list.append(new_item)
                 value = new_list
-        elif attr == "displayName" and "identifier" in attr_list:
-            value = get_translation(asset.identifier, global_language)
-        elif attr == "flavor" and "identifier" in attr_list:
-            value = get_translation(f"{asset.identifier}_flavor", global_language)
+        
+        elif attr == "id" and hasattr(value, '__class__') and value.__class__.__name__ == 'UnknownObject':
+            if hasattr(value, 'value'):
+                value = value.value
+        # elif attr == "displayName" and "identifier" in attr_list:
+        elif attr == "displayName" and "m_Name" in attr_list:
+            # value = get_translation(asset.identifier, global_language)
+            value = get_translation(asset.m_Name, global_language)
+        # elif attr == "flavor" and "identifier" in attr_list:
+        elif attr == "flavor" and "m_Name" in attr_list:
+            # value = get_translation(f"{asset.identifier}_flavor", global_language)
+            value = get_translation(f"{asset.m_Name}_flavor", global_language)
+        # elif attr == "description" and "m_Name" in attr_list:
+        elif attr == "description" and "m_Name" in attr_list:
+            if getattr(asset, "hasCustomDescription", False):
+                # value = get_translation(f"{asset.identifier}_description", global_language)
+                value = get_translation(f"{asset.m_Name}_description", global_language)
         elif attr == "useType":
             value = UseType(value).name
         elif attr == "slotType":
@@ -383,7 +408,8 @@ def process_item(asset: MonoBehaviour, path_id: int, destination_folder: str) ->
     name = ""
     tree: dict[str, Any] = {}
     final_destination = get_item_type_dir(asset, destination_folder)
-    name = get_translation(asset.identifier, global_language)
+    # name = get_translation(asset.identifier, global_language)
+    name = get_translation(asset.m_Name, global_language)
     asset_name_map[path_id] = name
     tree = process_asset(asset)
     write_asset(tree, name, final_destination)
@@ -440,20 +466,32 @@ def process_npc(asset: MonoBehaviour, destination_folder: str, path_id: int) -> 
 
 def process_character_base_attr(attrib: MonoBehaviour) -> AttributeContainerNew:
     attrib_type = attrib.type.deref_parse_as_dict()["itemDescriptionName"]
+    attrib_type_label = f"{attrib.type.deref_parse_as_dict()["m_Name"]}_label"
+    get_attrib_type_label = get_translation(attrib_type_label, global_language, "EntityAttributes/")
     result: AttributeContainerNew = {}
-    result["type"] = attrib_type
+    if get_attrib_type_label == attrib_type_label:
+        result["type"] = attrib_type
+    else:
+        result["type"] = get_translation(f"{attrib.type.deref_parse_as_dict()["m_Name"]}_label", global_language, "EntityAttributes/")
     result["value"] = attrib.value
     return result
 
 
 def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
     asset_dict: Unit = {}
+    m_name_value = getattr(asset, "m_Name", None)
     for key, type in Unit.__annotations__.items():
         value = getattr(asset, key)
         if key == "displayName":
-            value = get_translation(value, global_language, "UnitNames")
-        # elif key == "unitType":
-            # value = UnitType(value).name
+            if m_name_value:
+                value = get_translation(m_name_value, global_language, "UnitNames/")
+            else:
+                value = get_translation(value, global_language, "UnitNames/")
+        elif key == "unitType":
+            try:
+                value = UnitType(value).name
+            except ValueError:
+                value = str(value)
         elif key == "faction":
             if value.path_id == 0:
                 value = None
@@ -494,7 +532,7 @@ def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
                 existing_data = json.load(f)
 
             if (tree.get("displayName") == existing_data.get("displayName") and
-                tree.get("identifier") == existing_data.get("identifier") and
+                # tree.get("identifier") == existing_data.get("identifier") and
                 tree.get("m_Name") == existing_data.get("m_Name") and
                 tree.get("itemDescriptionName") == existing_data.get("itemDescriptionName")):
                 return

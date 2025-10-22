@@ -29,6 +29,7 @@ ItemType = Enum(
         ("Scavenge", 8),
         ("EnchantmentOil", 9),
         ("Valuable", 10),
+        ("Quest", 11),
     ],
 )
 
@@ -75,7 +76,7 @@ BuffType = Enum("BuffType", [("Attribute", 0), ("Status", 1)])
 # Units
 
 UnitType = Enum(
-    "UnitType", [("Melee", 1), ("Ranged", 2), ("Flying", 4), ("Boss", 8), ("Big", 16)]
+    "UnitType", [("Melee", 1), ("Ranged", 2), ("Flying", 4), ("Boss", 8), ("Big", 16), ("Swimmer", 32)]
 )
 
 AgentRole = Enum("AgentRole", [("Offensive", 0), ("Defensive", 1)])

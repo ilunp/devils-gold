@@ -9,7 +9,8 @@ class AttributeContainerNew(TypedDict):
 
 class Faction(TypedDict):
     # Data
-    identifier: str
+    # identifier: str
+    m_Name: str
     # Lore
     prettyLabel: str
     adjective: str
@@ -26,7 +27,8 @@ class Faction(TypedDict):
 
 class Unit(TypedDict):
     # File
-    identifier: str
+    # identifier: str
+    m_Name: str
     excludeFromLocalization: bool
     # Lore
     displayName: str
