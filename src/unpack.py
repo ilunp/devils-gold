@@ -60,12 +60,14 @@ global_units: dict[int, MonoBehaviour] = {}
 global_npcs: dict[int, MonoBehaviour] = {}
 
 global_achievements: dict[int, MonoBehaviour] = {}
+global_quest_items: dict[int, MonoBehaviour] = {}
 
 
 def unpack_assets(source: str, version: str, language: str) -> None:
     global global_language
     global global_game_settings
-
+    global global_quest_items
+    
     global_language = language
     unpack_dir = os.path.join(
         DEFAULT_UNPACK_DIR,
@@ -97,6 +99,9 @@ def unpack_assets(source: str, version: str, language: str) -> None:
                 global_npcs[pptr.path_id] = data
             if data.m_Name.startswith("Achievement_"):
                 global_achievements[pptr.path_id] = data
+            if (data.m_Name.endswith("QuestItems") or 
+                data.m_Name.endswith("QuestItemRewards")):
+                global_quest_items[pptr.path_id] = data
 
     print("Unpacking Items...")
     item_unpack_dir = os.path.join(unpack_dir, "Items")
@@ -141,6 +146,11 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     achievement_unpack_dir = os.path.join(unpack_dir, "Achievements")
     for achievement in global_achievements.values():
         process_achievement(achievement, achievement_unpack_dir)
+
+    print("Unpacking Quest Items...")
+    quest_unpack_dir = os.path.join(unpack_dir, "Quests")
+    for quest_item in global_quest_items.values():
+        process_basic(quest_item, quest_unpack_dir)
 
     print("Generating Recipe List...")
     generate_recipe_list(unpack_dir, version)
@@ -479,6 +489,7 @@ def process_character_base_attr(attrib: MonoBehaviour) -> AttributeContainerNew:
 
 def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
     asset_dict: Unit = {}
+
     m_name_value = getattr(asset, "m_Name", None)
     for key, type in Unit.__annotations__.items():
         value = getattr(asset, key)
