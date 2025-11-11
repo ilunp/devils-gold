@@ -29,6 +29,7 @@ ItemType = Enum(
         ("Scavenge", 8),
         ("EnchantmentOil", 9),
         ("Valuable", 10),
+        ("Quest", 11),
     ],
 )
 
@@ -67,7 +68,7 @@ ItemQuality = Enum(
 )
 
 StatModType = Enum(
-    "StatModType", [("Flat", 100), ("PercentAdd", 200), ("PercentMult", 300)]
+    "StatModType", [("NONE", 0),("Flat", 100), ("PercentAdd", 200), ("PercentMult", 300)]
 )
 
 BuffType = Enum("BuffType", [("Attribute", 0), ("Status", 1)])
@@ -75,7 +76,9 @@ BuffType = Enum("BuffType", [("Attribute", 0), ("Status", 1)])
 # Units
 
 UnitType = Enum(
-    "UnitType", [("Melee", 1), ("Ranged", 2), ("Flying", 3), ("Boss", 4), ("Big", 0x10)]
+    "UnitType", [("Melee", 1), ("Ranged", 2), ("Flying", 4), ("Boss", 8), ("Big", 16), ("Swimmer", 32)]
 )
 
 AgentRole = Enum("AgentRole", [("Offensive", 0), ("Defensive", 1)])
+
+ProjectileTypes = Enum("ProjectileTypes",[("None", 0),("Bullet", 1),("Arrow", 2),("Laser", 3),("Snowball", 4),("End", 5)],)
