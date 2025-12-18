@@ -1,7 +1,8 @@
-from pyI2L import read_assets, write_output, parsers
 import csv
+import glob
 import os
 import UnityPy
+from UnityPy.classes import MonoBehaviour
 
 """
 Translations are important for getting the correct data.
@@ -32,28 +33,33 @@ languages = {
 
 def extract_translations(path: str, unpack_dir: str) -> None:
     global translations_path
-    file_path = os.path.join("src/resources_old.assets")
-    # file_path = os.path.join(path, "resources.assets")
-    # file_path = os.path.join(path, "StreamingAssets/aa/StandaloneWindows64/defaultlocalgroup_assets_all_67e39e85b4ff7f4a7688c36ed26e76c9.bundle")
+
+    file_path = glob.glob(os.path.join(path, "StreamingAssets/aa/StandaloneWindows64/defaultlocalgroup_assets_all_*.bundle"))[0]
+    
     env = UnityPy.load(file_path)
-    # We need to find the correct file in the bundle
-    # for ojb in env.objects:
-    #     if ojb.type.name == "MonoBehaviour":
-    #         if ojb.name == "translations":
-    #             file_path = ojb.read()
-    #             break
-    # env = UnityPy.load(os.path.join(path, "StreamingAssets"))
-    # We need to find the correct file in the bundle
-    for ojb in env.objects:
-        if ojb.type.name == "MonoBehaviour":
-            if ojb.name == "I2Languages":
-                file_path = ojb.read()
-                print(f"Found translations at {file_path}")
+
+    translation_data = None
+    for obj in env.objects:
+        if obj.type.name == "MonoBehaviour":
+            data: MonoBehaviour = obj.parse_as_object()
+            if data.m_Name == "I2Languages":
+                translation_data = data
+                print("Found translations")
+                # print(data.mSource.mTerms)
                 break
+
+    if translation_data is None:
+        print("No translations found")
+        return
+
     unpack_path = os.path.join(unpack_dir, "translations.csv")
-    writer = parsers.rawCSV.Writer
-    assets = read_assets(file_path)
-    write_output(unpack_path, assets, writer)
+
+    with open(unpack_path, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL, quotechar='"')
+        writer.writerow(["20"] + list(languages.values()))
+        for term in translation_data.mSource.mTerms:
+            writer.writerow([term.Term] + term.Languages)
+
     translations_path = unpack_path
 
 

@@ -15,7 +15,17 @@ from sulfur_enums import (
     ItemType,
     UnitType,
     AgentRole,
+    # Card
+    CardBuffType,
+    CardType,
+    CardLayout,
+    CardRewardType,
+    CardEventType,
+    # Unit
+    EntityAttributes,
+    MutationDefinitions,
 )
+
 from sulfur_types import Unit, Faction, AttributeContainerNew
 from utils import clean_file_name, create_uuid_from_string
 from recipe import generate_recipe_list
@@ -60,6 +70,7 @@ global_units: dict[int, MonoBehaviour] = {}
 global_npcs: dict[int, MonoBehaviour] = {}
 
 global_achievements: dict[int, MonoBehaviour] = {}
+global_cards: dict[int, MonoBehaviour] = {}
 global_quest_items: dict[int, MonoBehaviour] = {}
 
 
@@ -99,6 +110,8 @@ def unpack_assets(source: str, version: str, language: str) -> None:
                 global_npcs[pptr.path_id] = data
             if data.m_Name.startswith("Achievement_"):
                 global_achievements[pptr.path_id] = data
+            if data.m_Name.startswith("Card_"):
+                global_cards[pptr.path_id] = data
             if (data.m_Name.endswith("QuestItems") or 
                 data.m_Name.endswith("QuestItemRewards")):
                 global_quest_items[pptr.path_id] = data
@@ -147,6 +160,11 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     for achievement in global_achievements.values():
         process_achievement(achievement, achievement_unpack_dir)
 
+    print("Unpacking Cards...")
+    cards_unpack_dir = os.path.join(unpack_dir, "Cards")
+    for card in global_cards.values():
+        process_card(card, cards_unpack_dir)
+
     print("Unpacking Quest Items...")
     quest_unpack_dir = os.path.join(unpack_dir, "Quests")
     for quest_item in global_quest_items.values():
@@ -157,6 +175,22 @@ def unpack_assets(source: str, version: str, language: str) -> None:
 
     print(f"Finished unpacking data to {unpack_dir}")
 
+
+def get_card_type_dir(asset: MonoBehaviour, destination_folder: str) -> str:
+    card_type = getattr(asset, "cardType", "")
+    dir = ""
+    if CardType(card_type) == CardType["ItemSpawn"]:
+        dir = "ItemSpawn"
+    elif CardType(card_type) == CardType["EntitySpawn"]:
+        dir = "EntitySpawn"
+    elif CardType(card_type) == CardType["Buff"]:
+        dir = "Buff"
+    elif CardType(card_type) == CardType["Event"]:
+        dir = "Event"
+    type_dir = os.path.join(destination_folder, dir)
+    if not os.path.exists(type_dir):
+        os.makedirs(type_dir)
+    return type_dir 
 
 def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
     # identifier = getattr(asset, "identifier", "")
@@ -232,71 +266,85 @@ def get_asset_name(pptr: PPtr) -> str:
 def get_enchantment_modifiers(enchantment: PPtr) -> list[dict[str, Any]]:
     enchantment_modifiers = []
     asset = enchantment.deref_parse_as_object()
+    if hasattr(asset, 'CostsDurability'):
+        enchantment_modifiers.append({"costsDurability": asset.CostsDurability})
+
     for en_modifier in asset.modifiersApplied:
         en_modifier_dict = process_asset(en_modifier)
         arrt = en_modifier.attribute.deref_parse_as_dict()
+        en_modifier_dict["id"] = arrt.get("id", 0)
+        en_modifier_dict["localizationKey"] = arrt.get("m_Name", 0)
         en_modifier_dict["showInItemDescription"] = arrt.get("showInItemDescription", 0)
         en_modifier_dict["isBooleanAttribute"] = arrt.get("isBooleanAttribute", 0)
         en_modifier_dict["isPercentageAttribute"] = arrt.get("isPercentageAttribute", 0)
         en_modifier_dict["simplifiedModAmount"] = arrt.get("simplifiedModAmount", 0)
-        en_modifier_dict["simplifiedIncreaseString"] = arrt.get("simplifiedIncreaseString", "")
-        en_modifier_dict["simplifiedDecreaseString"] = arrt.get("simplifiedDecreaseString", "")
+        # en_modifier_dict["simplifiedIncreaseString"] = arrt.get("simplifiedIncreaseString", "")
+        # en_modifier_dict["simplifiedDecreaseString"] = arrt.get("simplifiedDecreaseString", "")
         enchantment_modifiers.append(en_modifier_dict)
     return enchantment_modifiers
 
+def get_attribute_modifier(attribute: list[PPtr]) -> list[dict[str, Any]]:
+    attr_modifiers = []
 
-def get_equipnew_modifiers(equipnew: list[PPtr]) -> list[dict[str, Any]]:
-    equipnew_modifiers = []
-    for eq_modifier in equipnew:
-        eq_modifier_dict = process_asset(eq_modifier)
-        arrt = eq_modifier.attribute.deref_parse_as_dict()
-        eq_modifier_dict["showInItemDescription"] = arrt.get("showInItemDescription", 0)
-        eq_modifier_dict["isBooleanAttribute"] = arrt.get("isBooleanAttribute", 0)
-        eq_modifier_dict["isPercentageAttribute"] = arrt.get("isPercentageAttribute", 0)
-        equipnew_modifiers.append(eq_modifier_dict)
-    return equipnew_modifiers
+    for attr_modifier in attribute:
+        attr_modifier_dict = process_asset(attr_modifier)
+        if hasattr(attr_modifier, 'attribute'):
+            arrt = attr_modifier.attribute.deref_parse_as_dict()
+        elif hasattr(attr_modifier, 'attributeNew'):
+            arrt = attr_modifier.attributeNew.deref_parse_as_dict()
+        attr_modifier_dict["id"] = arrt.get("id", 0)
+        attr_modifier_dict["localizationKey"] = arrt.get("m_Name", 0)
+        attr_modifier_dict["showInItemDescription"] = arrt.get("showInItemDescription", 0)
+        attr_modifier_dict["isBooleanAttribute"] = arrt.get("isBooleanAttribute", 0)
+        attr_modifier_dict["isPercentageAttribute"] = arrt.get("isPercentageAttribute", 0)
+        attr_modifiers.append(attr_modifier_dict)
 
-
-def get_buffsonconsume_modifiers(buffsonconsume: list[PPtr]) -> list[dict[str, Any]]:
-    buffsonconsume_modifiers = []
-    for bu_modifier in buffsonconsume:
-        bu_modifier_dict = process_asset(bu_modifier)
-        arrt = bu_modifier.attributeNew.deref_parse_as_dict()
-        bu_modifier_dict["showInItemDescription"] = arrt.get("showInItemDescription", 0)
-        bu_modifier_dict["isBooleanAttribute"] = arrt.get("isBooleanAttribute", 0)
-        bu_modifier_dict["isPercentageAttribute"] = arrt.get("isPercentageAttribute", 0)
-        buffsonconsume_modifiers.append(bu_modifier_dict)
-    return buffsonconsume_modifiers
-
-def get_attach_modifiers(attach: list[PPtr]) -> list[dict[str, Any]]:
-    attach_modifiers = []
-    for at_modifier in attach:
-        at_modifier_dict = process_asset(at_modifier)
-        arrt = at_modifier.attribute.deref_parse_as_dict()
-        at_modifier_dict["showInItemDescription"] = arrt.get("showInItemDescription", 0)
-        at_modifier_dict["isBooleanAttribute"] = arrt.get("isBooleanAttribute", 0)
-        at_modifier_dict["isPercentageAttribute"] = arrt.get("isPercentageAttribute", 0)
-        attach_modifiers.append(at_modifier_dict)
-    return attach_modifiers
-
+    return attr_modifiers
 
 def process_achievement(asset: MonoBehaviour, destination_folder: str) -> None:
+    final_destination = destination_folder
+    
     processed_asset = process_asset(asset)
     # Get proper display name from translations
     # if hasattr(asset, 'identifier'):
-    if hasattr(asset, 'm_Name'):
-        # display_name = get_translation(asset.identifier, global_language)
-        display_name = get_translation(asset.m_Name, global_language)
-        processed_asset['displayName'] = display_name
-    # if hasattr(asset, 'descriptionIdentifier'):
-    if hasattr(asset, 'description'):
-        # description = get_translation(asset.descriptionIdentifier, global_language)
-        description = get_translation(asset.description, global_language)
-        processed_asset['description'] = description
-    write_asset(processed_asset, asset.m_Name, destination_folder)
+    # if hasattr(asset, 'm_Name'):
+    #     # display_name = get_translation(asset.identifier, global_language)
+    #     display_name = get_translation(asset.m_Name, global_language)
+    #     processed_asset['displayName'] = display_name
+    # # if hasattr(asset, 'descriptionIdentifier'):
+    # if hasattr(asset, 'description'):
+    #     # description = get_translation(asset.descriptionIdentifier, global_language)
+    #     description = get_translation(asset.description, global_language)
+    #     processed_asset['description'] = description
+    write_asset(processed_asset, asset.identifier, final_destination)
 
 
-def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
+def process_card(asset: MonoBehaviour, destination_folder: str) -> None:
+    enum_mappings = {
+        'buffType': CardBuffType,
+        'cardType': CardType,
+        'cardLayout': CardLayout,
+        'rewardType': CardRewardType,
+        'eventType': CardEventType
+    }
+    final_destination = destination_folder
+    name = ""
+    tree: dict[str, Any] = {}
+    final_destination = get_card_type_dir(asset, destination_folder)
+    name = get_translation(f"{asset.m_Name}_Title", global_language, "Endless/")
+    tree = process_asset(asset, is_card=True)
+    for field, enum_class in enum_mappings.items():
+        if field in tree:
+            try:
+                value = tree[field]
+                if isinstance(value, int):
+                    tree[field] = enum_class(value).name
+            except (ValueError, KeyError):
+                pass
+
+    write_asset(tree, name, final_destination)
+
+def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]:
     global global_calibers
     global global_weapon_types
     attr_list = [
@@ -321,7 +369,7 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
                         if value.path_id not in global_calibers:
                             global_calibers[value.path_id] = value.deref_parse_as_object()
                     if attr == "weaponType":
-                        if value.path_id not in global_calibers:
+                        if value.path_id not in global_weapon_types:
                             global_weapon_types[value.path_id] = (
                                 value.deref_parse_as_object()
                             )
@@ -332,11 +380,11 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
             value = {"x": value.x, "y": value.y}
         elif type(value) is list:
             if attr == "modifiersOnEquipNew":
-                value = get_equipnew_modifiers(value)
+                value = get_attribute_modifier(value)
             elif attr == "modifiersOnAttachToItem":
-                value = get_attach_modifiers(value)
+                value = get_attribute_modifier(value)
             elif attr == "buffsOnConsume":
-                value = get_buffsonconsume_modifiers(value) 
+                value = get_attribute_modifier(value) 
             else:
                 new_list = []
                 for item in value:
@@ -375,7 +423,7 @@ def process_asset(asset: MonoBehaviour) -> dict[str, Any]:
             value = HoldableWeightClass(value).name
         elif attr == "modType" or attr == "StatModType":
             value = StatModType(value).name
-        elif attr == "buffType":
+        elif attr == "buffType" and not is_card:
             value = BuffType(value).name
         elif attr == "itemQuality":
             value = ItemQuality(value).name
@@ -493,6 +541,20 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
     m_name_value = getattr(asset, "m_Name", None)
     for key, type in Unit.__annotations__.items():
         value = getattr(asset, key)
+        if hasattr(asset, 'id'):
+            id_value = getattr(asset, 'id')
+            if hasattr(id_value, 'value'):
+                asset_dict['id'] = id_value.value
+            elif isinstance(id_value, dict) and 'value' in id_value:
+                asset_dict['id'] = id_value['value']
+            else:
+                try:
+                    asset_dict['id'] = int(id_value)
+                except:
+                    asset_dict['id'] = str(id_value)
+        else:
+            asset_dict['id'] = None
+
         if key == "displayName":
             if m_name_value:
                 value = get_translation(m_name_value, global_language, "UnitNames/")
@@ -519,6 +581,20 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
                 new_attrib = process_character_base_attr(attrib)
                 new_attribs.append(new_attrib)
             value = new_attribs
+        elif key == "applicableAttributeEffects":
+            new_effects = []
+            for effect in value:
+                effect_name = EntityAttributes(effect).name
+                new_effects.append(effect_name)
+                
+            value = new_effects
+        elif key == "availableMutations":
+            new_mutations = []
+            for mutation in value:
+                mutation_name = MutationDefinitions(mutation).name
+                new_mutations.append(mutation_name)
+
+            value = new_mutations
         else:
             value = type(value)
         asset_dict[key] = value

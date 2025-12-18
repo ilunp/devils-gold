@@ -54,3 +54,5 @@ class Unit(TypedDict):
     faction: str  # Faction.prettyLabel
     rolesAvailable: list[str]  # enum AgentRole.name
     characterBaseAttributesNew: list[AttributeContainerNew]
+    applicableAttributeEffects: list[str]
+    availableMutations: list[str]
