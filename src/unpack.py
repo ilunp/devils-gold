@@ -370,10 +370,12 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
                             global_calibers[value.path_id] = value.deref_parse_as_object()
                     if attr == "weaponType":
                         if value.path_id not in global_weapon_types:
-                            global_weapon_types[value.path_id] = (
-                                value.deref_parse_as_object()
-                            )
-                    value = get_asset_name(value)
+                            global_weapon_types[value.path_id] = value.deref_parse_as_object()
+
+                        weapon_type_obj = value.deref_parse_as_dict()
+                        value = weapon_type_obj.get("m_Name", "")
+                    else:
+                        value = get_asset_name(value)
             else:
                 value = None
         elif type(value) is int2_storage:
@@ -569,6 +571,7 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
             if value.path_id == 0:
                 value = None
             else:
+                process_faction(value, destination_folder)
                 value = value.deref_parse_as_dict()["prettyLabel"]
         elif key == "rolesAvailable":
             new_roles = []
@@ -601,6 +604,11 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
     final_destination = os.path.join(destination_folder, str(asset_dict["faction"]))
     write_asset(asset_dict, asset_dict["displayName"], final_destination)
 
+def process_faction(asset: MonoBehaviour, destination_folder: str) -> None:
+    processed_asset = process_asset(asset.deref_parse_as_object())
+    name = f"_Faction_{processed_asset['prettyLabel'] or processed_asset['m_Name']}"
+    final_destination = os.path.join(destination_folder, str(processed_asset["prettyLabel"]))
+    write_asset(processed_asset, name, final_destination)
 
 def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
     if not os.path.exists(path):
