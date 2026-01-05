@@ -5,26 +5,7 @@ import argparse
 import json
 from translations import extract_translations, get_translation
 from typing import Any
-from sulfur_enums import (
-    UseType,
-    ItemQuality,
-    SlotType,
-    HoldableWeightClass,
-    BuffType,
-    StatModType,
-    ItemType,
-    UnitType,
-    AgentRole,
-    # Card
-    CardBuffType,
-    CardType,
-    CardLayout,
-    CardRewardType,
-    CardEventType,
-    # Unit
-    EntityAttributes,
-    MutationDefinitions,
-)
+from sulfur_enums import *
 
 from sulfur_types import Unit, Faction, AttributeContainerNew
 from utils import clean_file_name, create_uuid_from_string
@@ -69,6 +50,7 @@ global_weapon_types: dict[int, MonoBehaviour] = {}
 global_units: dict[int, MonoBehaviour] = {}
 global_npcs: dict[int, MonoBehaviour] = {}
 
+global_interacts: dict[int, MonoBehaviour] = {}
 global_achievements: dict[int, MonoBehaviour] = {}
 global_cards: dict[int, MonoBehaviour] = {}
 global_quest_items: dict[int, MonoBehaviour] = {}
@@ -107,7 +89,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
             if hasattr(data, "unitType"):
                 global_units[pptr.path_id] = data
             if hasattr(data, "meleeDamageType"):
-                global_npcs[pptr.path_id] = data
+                global_npcs[pptr.path_id] = data     
             if data.m_Name.startswith("Achievement_"):
                 global_achievements[pptr.path_id] = data
             if data.m_Name.startswith("Card_"):
@@ -115,6 +97,8 @@ def unpack_assets(source: str, version: str, language: str) -> None:
             if (data.m_Name.endswith("QuestItems") or 
                 data.m_Name.endswith("QuestItemRewards")):
                 global_quest_items[pptr.path_id] = data
+            if hasattr(data, "interactableType"):
+                global_interacts[pptr.path_id] = data
 
     print("Unpacking Items...")
     item_unpack_dir = os.path.join(unpack_dir, "Items")
@@ -170,6 +154,11 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     for quest_item in global_quest_items.values():
         process_basic(quest_item, quest_unpack_dir)
 
+    print("Unpacking Interacts...")
+    interact_unpack_dir = os.path.join(unpack_dir, "Interacts")
+    for path_id, interact in global_interacts.items():
+        process_interact(interact, interact_unpack_dir, path_id)
+
     print("Generating Recipe List...")
     generate_recipe_list(unpack_dir, version)
 
@@ -191,6 +180,34 @@ def get_card_type_dir(asset: MonoBehaviour, destination_folder: str) -> str:
     if not os.path.exists(type_dir):
         os.makedirs(type_dir)
     return type_dir 
+
+def get_interact_type_dir(asset: MonoBehaviour, destination_folder: str) -> str:
+    interactable_type = getattr(asset, "interactableType", "")
+    dir = ""
+    if InteractableType(interactable_type) == InteractableType["Dialog"]:
+        dir = "Dialog"
+    elif InteractableType(interactable_type) == InteractableType["Shop"]:
+        dir = "Shop"
+    elif InteractableType(interactable_type) == InteractableType["Repair"]:
+        dir = "Repair"
+    elif InteractableType(interactable_type) == InteractableType["Enchant"]:
+        dir = "Enchant"
+    elif InteractableType(interactable_type) == InteractableType["Cook"]:
+        dir = "Cook"
+    elif InteractableType(interactable_type) == InteractableType["Interact"]:
+        dir = "Interact"
+    elif InteractableType(interactable_type) == InteractableType["LockedDoor"]:
+        dir = "LockedDoor"
+    elif InteractableType(interactable_type) == InteractableType["Dice"]:
+        dir = "Dice"
+    elif InteractableType(interactable_type) == InteractableType["Cleanse"]:
+        dir = "Cleanse"
+    elif InteractableType(interactable_type) == InteractableType["Quest"]:
+        dir = "Quest"
+    type_dir = os.path.join(destination_folder, dir)
+    if not os.path.exists(type_dir):
+        os.makedirs(type_dir)
+    return type_dir
 
 def get_item_type_dir(asset: PPtr, destination_folder: str) -> str:
     # identifier = getattr(asset, "identifier", "")
@@ -301,48 +318,7 @@ def get_attribute_modifier(attribute: list[PPtr]) -> list[dict[str, Any]]:
 
     return attr_modifiers
 
-def process_achievement(asset: MonoBehaviour, destination_folder: str) -> None:
-    final_destination = destination_folder
-    
-    processed_asset = process_asset(asset)
-    # Get proper display name from translations
-    # if hasattr(asset, 'identifier'):
-    # if hasattr(asset, 'm_Name'):
-    #     # display_name = get_translation(asset.identifier, global_language)
-    #     display_name = get_translation(asset.m_Name, global_language)
-    #     processed_asset['displayName'] = display_name
-    # # if hasattr(asset, 'descriptionIdentifier'):
-    # if hasattr(asset, 'description'):
-    #     # description = get_translation(asset.descriptionIdentifier, global_language)
-    #     description = get_translation(asset.description, global_language)
-    #     processed_asset['description'] = description
-    write_asset(processed_asset, asset.identifier, final_destination)
 
-
-def process_card(asset: MonoBehaviour, destination_folder: str) -> None:
-    enum_mappings = {
-        'buffType': CardBuffType,
-        'cardType': CardType,
-        'cardLayout': CardLayout,
-        'rewardType': CardRewardType,
-        'eventType': CardEventType
-    }
-    final_destination = destination_folder
-    name = ""
-    tree: dict[str, Any] = {}
-    final_destination = get_card_type_dir(asset, destination_folder)
-    name = get_translation(f"{asset.m_Name}_Title", global_language, "Endless/")
-    tree = process_asset(asset, is_card=True)
-    for field, enum_class in enum_mappings.items():
-        if field in tree:
-            try:
-                value = tree[field]
-                if isinstance(value, int):
-                    tree[field] = enum_class(value).name
-            except (ValueError, KeyError):
-                pass
-
-    write_asset(tree, name, final_destination)
 
 def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]:
     global global_calibers
@@ -364,6 +340,9 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
             if value.path_id != 0:
                 if attr == "appliesEnchantment":
                     value = get_enchantment_modifiers(value)
+                elif attr == "vendorTable":
+                    value = get_asset_name(value)
+
                 else:
                     if attr == "caliber":
                         if value.path_id not in global_calibers:
@@ -513,6 +492,72 @@ def process_game_settings(asset: MonoBehaviour, destination_folder: str) -> None
                 write_asset(processed_level, level_obj.m_Name, level_dir)
 
 
+def process_achievement(asset: MonoBehaviour, destination_folder: str) -> None:
+    final_destination = destination_folder
+    
+    processed_asset = process_asset(asset)
+    # Get proper display name from translations
+    # if hasattr(asset, 'identifier'):
+    # if hasattr(asset, 'm_Name'):
+    #     # display_name = get_translation(asset.identifier, global_language)
+    #     display_name = get_translation(asset.m_Name, global_language)
+    #     processed_asset['displayName'] = display_name
+    # # if hasattr(asset, 'descriptionIdentifier'):
+    # if hasattr(asset, 'description'):
+    #     # description = get_translation(asset.descriptionIdentifier, global_language)
+    #     description = get_translation(asset.description, global_language)
+    #     processed_asset['description'] = description
+    write_asset(processed_asset, asset.identifier, final_destination)
+
+
+def process_card(asset: MonoBehaviour, destination_folder: str) -> None:
+    enums = {
+        'buffType': CardBuffType,
+        'cardType': CardType,
+        'cardLayout': CardLayout,
+        'rewardType': CardRewardType,
+        'eventType': CardEventType
+    }
+    final_destination = destination_folder
+    name = ""
+    tree: dict[str, Any] = {}
+    final_destination = get_card_type_dir(asset, destination_folder)
+    name = get_translation(f"{asset.m_Name}_Title", global_language, "Endless/")
+    tree = process_asset(asset, is_card=True)
+    for field, enum in enums.items():
+        if field in tree:
+            try:
+                value = tree[field]
+                if isinstance(value, int):
+                    tree[field] = enum(value).name
+            except (ValueError, KeyError):
+                pass
+
+    write_asset(tree, name, final_destination)
+
+def process_interact(asset: MonoBehaviour, destination_folder: str, path_id: int) -> None:
+    enums = {
+        'craftingType': CraftingType,
+        'interactableType': InteractableType
+    }
+    final_destination = destination_folder
+    name = ""
+    tree: dict[str, Any] = {}
+    final_destination = get_interact_type_dir(asset, destination_folder)
+    name = f"{path_id}"
+    tree = process_asset(asset)
+    for field, enum in enums.items():
+        if field in tree:
+            try:
+                value = tree[field]
+                if isinstance(value, int):
+                    tree[field] = enum(value).name
+
+            except (ValueError, KeyError):
+                pass
+
+    write_asset(tree, name, final_destination)
+
 def process_basic(asset: MonoBehaviour, destination_folder: str) -> None:
     processed_asset = process_asset(asset)
     write_asset(processed_asset, asset.m_Name, destination_folder)
@@ -520,7 +565,8 @@ def process_basic(asset: MonoBehaviour, destination_folder: str) -> None:
 
 def process_npc(asset: MonoBehaviour, destination_folder: str, path_id: int) -> None:
     processed_asset = process_asset(asset)
-    name = f"{processed_asset["unitSO"]}_{path_id}"
+    # print(f"Processed NPC Asset: {processed_asset['unitSO']}")
+    name = f"{processed_asset['unitSO']}_{path_id}"
     write_asset(processed_asset, name, destination_folder)
 
 
@@ -543,7 +589,7 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
     m_name_value = getattr(asset, "m_Name", None)
     for key, type in Unit.__annotations__.items():
         value = getattr(asset, key)
-        if hasattr(asset, 'id'):
+        if hasattr(asset, 'id') :
             id_value = getattr(asset, 'id')
             if hasattr(id_value, 'value'):
                 asset_dict['id'] = id_value.value
@@ -562,6 +608,11 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
                 value = get_translation(m_name_value, global_language, "UnitNames/")
             else:
                 value = get_translation(value, global_language, "UnitNames/")
+        elif key == "artwork":
+            if value.path_id == 0:
+                value = None
+            else:
+                value = value.deref_parse_as_dict()["m_Name"]
         elif key == "unitType":
             try:
                 value = UnitType(value).name
@@ -607,8 +658,9 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
 def process_faction(asset: MonoBehaviour, destination_folder: str) -> None:
     processed_asset = process_asset(asset.deref_parse_as_object())
     name = f"_Faction_{processed_asset['prettyLabel'] or processed_asset['m_Name']}"
-    final_destination = os.path.join(destination_folder, str(processed_asset["prettyLabel"]))
+    final_destination = os.path.join(destination_folder, str(processed_asset['prettyLabel']))
     write_asset(processed_asset, name, final_destination)
+
 
 def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
     if not os.path.exists(path):

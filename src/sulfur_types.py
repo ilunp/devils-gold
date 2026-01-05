@@ -10,6 +10,7 @@ class AttributeContainerNew(TypedDict):
 class Faction(TypedDict):
     # Data
     # identifier: str
+    id: str
     m_Name: str
     # Lore
     prettyLabel: str
@@ -28,12 +29,14 @@ class Faction(TypedDict):
 class Unit(TypedDict):
     # File
     # identifier: str
+    id: str
     m_Name: str
     excludeFromLocalization: bool
     # Lore
     displayName: str
     description: str
     # Unit Settings
+    artwork: str
     canBeDeactivated: bool
     unitType: str  # enum UnitType.name
     isCivilian: bool

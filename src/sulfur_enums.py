@@ -104,8 +104,11 @@ MutationDefinitions = Enum(
     [("None", 0), ("Mutation_Big", 1), ("Mutation_Bomb", 2), ("Mutation_Fire", 3), ("Mutation_Frost", 4), ("Mutation_FrostTrail", 5), ("Mutation_Lava", 6), ("Mutation_Monstrosity", 7), ("Mutation_Poison", 8), ("Mutation_PoisonTrail", 9), ("Mutation_NoxiosaCloud", 10), ("Mutation_Shapeshifter", 11), ("Mutation_Shock", 12), ("Mutation_Small", 13), ("Mutation_Surge", 14), ("Mutation_Blink", 15), ("Mutation_Charming", 16), ("Mutation_Crypt", 17), ("End", 18)]
 )
 
-
 InteractableType = Enum(
     "InteractableType", 
     [("Dialog", 0), ("Shop", 1), ("Repair", 2), ("Enchant", 3), ("Cook", 4), ("Interact", 5), ("LockedDoor", 6), ("Dice", 7), ("Cleanse", 8), ("Quest", 9)]
+)
+CraftingType = Enum(
+    "CraftingType",
+    [("Generic", 0), ("Cooking", 1), ("Enchantments", 2)]
 )
