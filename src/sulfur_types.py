@@ -1,11 +1,12 @@
-from typing import TypedDict
+from typing import TypedDict, List
 from sulfur_enums import UnitType
 
 
 class AttributeContainerNew(TypedDict):
-    type: str  # EntityAttributeType.itemDescriptionName
+    # type: str  # EntityAttributeType.itemDescriptionName
+    type: str
     value: float
-
+    
 
 class Faction(TypedDict):
     # Data
@@ -36,7 +37,8 @@ class Unit(TypedDict):
     displayName: str
     description: str
     # Unit Settings
-    artwork: str
+    # artwork: str
+    artworkRef: str
     canBeDeactivated: bool
     unitType: str  # enum UnitType.name
     isCivilian: bool
@@ -54,8 +56,10 @@ class Unit(TypedDict):
     alwaysKnowsPlayerPosition: bool
     invisibleBeforeAggro: bool
     firstShotMissingByPurpose: bool
-    faction: str  # Faction.prettyLabel
+    # faction: str  # Faction.prettyLabel
+    factionId: int
     rolesAvailable: list[str]  # enum AgentRole.name
     characterBaseAttributesNew: list[AttributeContainerNew]
+    characterBaseAttributesNew: list[str]
     applicableAttributeEffects: list[str]
     availableMutations: list[str]

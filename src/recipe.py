@@ -5,12 +5,14 @@ from typing import Any
 
 def print_recipe(amount: int, creates: str, items: list[dict[str, Any]]) -> str:
     recipeText = ""
-    recipeText += str(amount) + " " + creates + " = "
+    # recipeText += str(amount) + " " + creates + " = "
+    recipeText += f"{amount} {creates} = "
     if items:
         for index, element in enumerate(items):
             ingredientAmount = element["quantity"]
             ingredient = element["item"]
-            recipeText += str(ingredientAmount) + " " + ingredient
+            # recipeText += str(ingredientAmount) + " " + ingredient
+            recipeText += f"{ingredientAmount} {ingredient}"
             if index + 1 < len(items):
                 recipeText += " + "
     return recipeText
@@ -30,7 +32,8 @@ def generate_recipe_list(data_path: str, version: str) -> None:
                     amount = rawJson["quantityCreated"]
                     creates = rawJson["createsItem"]
                     recipeText = print_recipe(amount, creates, items)
-                    masterlist += recipeText + "\n"
+                    # masterlist += recipeText + "\n"
+                    masterlist += f"{recipeText}\n"
             masterlist += "\n\n"
     output_path = os.path.join(data_path, "recipes.txt")
     with open(output_path, "w", encoding="utf8") as newFile:

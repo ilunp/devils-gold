@@ -34,7 +34,8 @@ languages = {
 def extract_translations(path: str, unpack_dir: str) -> None:
     global translations_path
 
-    file_path = glob.glob(os.path.join(path, "StreamingAssets/aa/StandaloneWindows64/defaultlocalgroup_assets_all_*.bundle"))[0]
+    # file_path = glob.glob(os.path.join(path, "StreamingAssets/aa/StandaloneWindows64/defaultlocalgroup_assets_all_*.bundle"))[0]
+    file_path = glob.glob(os.path.join(path, "StreamingAssets/aa/StandaloneWindows64/onstartup_assets_all_*.bundle"))[0]
     
     env = UnityPy.load(file_path)
 
