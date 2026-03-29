@@ -124,7 +124,6 @@ EntityAttributes = Enum(
         ("ExtraDamage_Shotgun", 15),
         ("ExtraDamage_SMG", 16),
         ("ExtraDamage_Sniper", 17),
-
         ("NegativeEffect_Blinded", 18),
         ("NegativeEffect_Burning", 19),
         ("NegativeEffect_Charmed", 20),
@@ -141,7 +140,6 @@ EntityAttributes = Enum(
         ("NegativeEffect_Suffocating", 31),
         ("NegativeEffect_Voodoo", 32),
         ("NegativeEffect_Wet", 33),
-
         ("Resistance_Armor", 34),
         ("Resistance_Charm", 35),
         ("Resistance_Earth", 36),
@@ -153,7 +151,6 @@ EntityAttributes = Enum(
         ("Resistance_Poison", 42),
         ("Resistance_Punish", 43),
         ("Resistance_Shadow", 44),
-
         ("Stat_AimMovingBonus", 45),
         ("Stat_Blindfolded", 46),
         ("Stat_Charisma", 47),
@@ -172,7 +169,6 @@ EntityAttributes = Enum(
         ("Stat_MaxHealth", 60),
         ("Stat_MeleeDamage", 61),
         ("Stat_MovementSpeed", 62),
-
         ("Stat_Mutation_Big", 63),
         ("Stat_Mutation_Blink", 64),
         ("Stat_Mutation_Bomb", 65),
@@ -193,7 +189,6 @@ EntityAttributes = Enum(
         ("Stat_Mutation_Small", 80),
         ("Stat_Mutation_Surge", 81),
         ("Stat_Mutation_Surge_Ranged", 82),
-
         ("Stat_Oxygen", 83),
         ("Stat_SlowMotion", 84),
         ("Stat_SpringyShoes", 85),
@@ -202,7 +197,6 @@ EntityAttributes = Enum(
         ("Stat_WeaponWeightPenalty", 88),
         ("Stat_WearingEarPro", 89),
         ("Stat_WearingShades", 90),
-
         ("Status_AirInLungs", 91),
         ("Status_CurrentHealth", 92),
         ("Status_Invisible", 93),
@@ -210,36 +204,24 @@ EntityAttributes = Enum(
         ("Status_WearingGoggles", 95),
         ("Status_WearingStraitJacket", 96),
         ("Status_Buoyant", 97),
-
         ("Stat_WearingRudolfNose", 98),
-
         ("NegativeEffect_ChainLightning", 99),
         ("NegativeEffect_Charmed_Player", 100),
-
         ("Resistance_Petrified", 101),
-
         ("NegativeEffect_Bleed", 102),
         ("Resistance_Bleed", 103),
-
         ("Stat_BonusXP", 104),
         ("Stat_CrouchSpeed", 105),
         ("Stat_JumpShotDamage", 106),
-
         ("Status_OneInTheChamber", 107),
         ("Status_SpawnFriendOnLevelLoad", 108),
         ("Status_1HPSurvivial", 109),
-
         ("Stat_MovementSpeedBoostAfterEating", 110),
         ("Stat_DefaultTimeScale", 111),
-
         ("Status_NoNormalItemDrops", 112),
         ("Status_UnhealableDamage", 113),
-
         ("NegativeEffect_Knockback", 114),
-
         ("Stat_GlobalDamageMultiplier", 115),
         ("Stat_Thorns", 116),
-
-        ("End", 117),
     ],
 )

@@ -139,27 +139,27 @@ FactionIds = Enum(
     [
         ("None", 0),
         ("Bar", 1),
-        ("BlackGuild", 2),
+        ("The Black Guild", 2),
         ("BlackGuildMaskless", 3),
         ("Condemned", 4),
-        ("Congregation", 5),
-        ("Corrupted", 6),
+        ("The Congregation", 5),
+        ("The Corrupted", 6),
         ("Crones", 7),
         ("DHell", 8),
         ("Gaia", 9),
         ("Ghosts", 10),
-        ("Goblins", 11),
+        ("The Goblins", 11),
         ("Haradrians", 12),
         ("Haukland", 13),
-        ("Hellshrews", 14),
-        ("LuciaFaction", 15),
+        ("The Hellshrews", 14),
+        ("Order of Lucia", 15),
         ("Player", 16),
         ("RexPopuli", 17),
         ("ShantyCiv", 18),
-        ("ShavWa", 19),
-        ("SkripsSkrap", 20),
+        ("Shav'Wa", 19),
+        ("Skrips Skrap", 20),
         ("TheCraw", 21),
-        ("WitchFaction", 22),
+        ("Witch Faction", 22),
     ]
 )
 
@@ -185,3 +185,19 @@ CraftingType = Enum(
     [("Generic", 0), ("Cooking", 1), ("Enchantments", 2)]
 )
 
+usesResource = Enum(
+    "usesResource",
+    [
+        ("None", 0),
+        ("Resource_Ammo_9mm", 1),
+        ("Resource_Ammo_12Ga", 2),
+        ("Resource_Ammo_50BMG", 3),
+        ("Resource_Ammo_556", 4),
+        ("Resource_Ammo_762", 5),
+        ("Resource_Ammo_EnergyCell", 6),
+        ("Resource_AmuletCharge", 7),
+        ("Resource_ChurchCollection", 8),
+        ("Resource_SulfCoin", 9),
+        ("Resource_Stamp", 10),
+    ]
+)

@@ -11,7 +11,7 @@ class AttributeContainerNew(TypedDict):
 class Faction(TypedDict):
     # Data
     # identifier: str
-    id: str
+    # id: str
     m_Name: str
     # Lore
     prettyLabel: str

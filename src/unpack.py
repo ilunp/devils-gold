@@ -167,10 +167,10 @@ def unpack_assets(source: str, version: str, language: str) -> None:
         f"       {len(global_interacts)} Interacts. \n"
     )
 
-    # print("Unpacking Asset Access...")
-    # aa_unpack_dir = os.path.join(unpack_dir, "Asset Access")
-    # for path_id, item in asset_access.items():
-    #     process_basic(item, aa_unpack_dir)
+    print("Unpacking Asset Access...")
+    aa_unpack_dir = os.path.join(unpack_dir, "Asset Access")
+    for path_id, item in asset_access.items():
+        process_basic(item, aa_unpack_dir)
 
     
     print("Unpacking Calibers...")
@@ -202,10 +202,10 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     for item in global_units.values():
         process_unit(item, unit_unpack_dir)
 
-    print("Unpacking NPCs...")
-    npc_unpack_dir = os.path.join(unpack_dir, "NPCs")
-    for path_id, item in global_npcs.items():
-        process_npc(item, npc_unpack_dir, path_id)
+    # print("Unpacking NPCs...")
+    # npc_unpack_dir = os.path.join(unpack_dir, "NPCs")
+    # for path_id, item in global_npcs.items():
+    #     process_npc(item, npc_unpack_dir, path_id)
 
     print("Unpacking Loot Tables...")
     loot_table_unpack_dir = os.path.join(unpack_dir, "Loot Tables")
@@ -231,10 +231,10 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     for quest_item in global_quest_items.values():
         process_basic(quest_item, quest_unpack_dir)
 
-    print("Unpacking Interacts...")
-    interact_unpack_dir = os.path.join(unpack_dir, "Interacts")
-    for path_id, interact in global_interacts.items():
-        process_interact(interact, interact_unpack_dir, path_id)
+    # print("Unpacking Interacts...")
+    # interact_unpack_dir = os.path.join(unpack_dir, "Interacts")
+    # for path_id, interact in global_interacts.items():
+    #     process_interact(interact, interact_unpack_dir, path_id)
 
     print(f"Finished unpacking data to {unpack_dir}")
 
@@ -356,34 +356,34 @@ def get_asset_name(pptr: PPtr) -> str:
 def get_attribute_modifier(attributes: list[PPtr], is_item: bool = False) -> list[dict[str, Any]]:
     attribute_list = []
 
-
     for attr in attributes:
         attr_dict = process_asset(attr)
 
-        if is_item and "attribute" in attr_dict:
-            attr_obj = global_item_attr.get(attr_dict["attribute"])
-        else:
-            try:
-                attr_obj = global_entity_attr.get(attr_dict["attributeId"])
-            except KeyError:
+        if "attribute" in attr_dict:
+            if is_item:
+                attr_obj = global_item_attr.get(attr_dict["attribute"])
+            else:
                 attr_obj = global_entity_attr.get(attr_dict["attribute"])
+        else:
+                attr_obj = global_entity_attr.get(attr_dict["attributeId"])
 
-        attr_dict["attributeName"] = attr_obj.m_Name
-        if is_item:
-            # attr_dict["attributeName"] = get_translation(f"{attr_obj.m_Name}_label", global_language, "ItemAttributes/")
-            attr_dict["showInItemDescription"] = attr_obj.showInItemDescription
-        # else:
-            # attr_dict["attributeName"] = get_translation(f"{attr_obj.m_Name}_label", global_language, "EntityAttributes/")
-        
-        attr_dict["isBooleanAttribute"] = attr_obj.isBooleanAttribute
-        attr_dict["isPercentageAttribute"] = attr_obj.isPercentageAttribute
-        
-        if is_item and attr_obj.simplifiedModAmount == 1:
-            attr_dict["simplifiedModAmount"] = attr_obj.simplifiedModAmount
-            attr_dict["simplifiedIncreaseString"] = attr_obj.simplifiedIncreaseString
-            attr_dict["simplifiedDecreaseString"] = attr_obj.simplifiedDecreaseString
-        
-        attribute_list.append(attr_dict)
+        if attr_obj:
+            attr_dict["attributeName"] = attr_obj.m_Name
+            if is_item:
+                # attr_dict["attributeName"] = get_translation(f"{attr_obj.m_Name}_label", global_language, "ItemAttributes/")
+                attr_dict["showInItemDescription"] = attr_obj.showInItemDescription
+            # else:
+                # attr_dict["attributeName"] = get_translation(f"{attr_obj.m_Name}_label", global_language, "EntityAttributes/")
+            
+            attr_dict["isBooleanAttribute"] = attr_obj.isBooleanAttribute
+            attr_dict["isPercentageAttribute"] = attr_obj.isPercentageAttribute
+            
+            if is_item and attr_obj.simplifiedModAmount == 1:
+                attr_dict["simplifiedModAmount"] = attr_obj.simplifiedModAmount
+                attr_dict["simplifiedIncreaseString"] = attr_obj.simplifiedIncreaseString
+                attr_dict["simplifiedDecreaseString"] = attr_obj.simplifiedDecreaseString
+            
+            attribute_list.append(attr_dict)
 
     return attribute_list
 
@@ -421,12 +421,12 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
         elif type(value) is int2_storage:
             value = {"x": value.x, "y": value.y}
         elif type(value) is list:
-
-            if attr == "baseAttributes" or attr == "modifiersOnAttachToItem" or attr == "valueChangeOnItemConsume" or attr == "modifiersApplied":
-                # ItemAttribute 
+            # ItemAttribute 
+            if attr == "baseAttributes" or attr == "modifiersOnAttachToItem" or attr == "valueChangeOnItemConsume" or attr == "modifiersApplied" or attr == "alternativeModAppliedOnWeapon":
                 value = get_attribute_modifier(value, True)
-            elif attr == "buffsOnConsume" or attr == "modifiersOnEquipNew" or attr == "buffsToApply":
-                # EntityAttribute
+
+            # EntityAttribute
+            elif attr == "buffsOnConsume" or attr == "modifiersOnEquipNew" or attr == "buffsToApply" or attr == "permanentModifiers" or attr == "alternativeModAppliedOnOwner" or attr == "alternativeModOnHit":
                 value = get_attribute_modifier(value)
             elif attr == "recipesTaughtOnConsume":
                 recipe_list = []
@@ -457,7 +457,6 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
                             env_name = env_obj.m_Name if env_obj else str(item)
                             # print(f"Environment ID {item} maps to {env_name}")
                             new_item = env_name
-
                         else:
                             new_item = process_asset(item)
                     new_list.append(new_item)
@@ -465,20 +464,27 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
         # elif attr == "displayName" and "identifier" in attr_list:
         elif attr == "displayName" and "m_Name" in attr_list:
             # value = get_translation(asset.identifier, global_language)
-            value = get_translation(asset.m_Name, global_language)
+            if is_card:
+                value = get_translation(f"{asset.m_Name}_Title", global_language, "Endless/")
+            else:
+                value = get_translation(asset.m_Name, global_language)
         # elif attr == "flavor" and "identifier" in attr_list:
         elif attr == "flavor" and "m_Name" in attr_list:
             # value = get_translation(f"{asset.identifier}_flavor", global_language)
             value = get_translation(f"{asset.m_Name}_flavor", global_language)
         # elif attr == "description" and "m_Name" in attr_list:
         elif attr == "description" and "m_Name" in attr_list:
+            
             if getattr(asset, "hasCustomDescription", False):
                 # value = get_translation(f"{asset.identifier}_description", global_language)
                 value = get_translation(f"{asset.m_Name}_description", global_language)
+            elif is_card:
+                value = get_translation(f"{asset.m_Name}_Description", global_language, "Endless/")
         elif attr == "caliber" or attr == "Caliber" or attr == "modifiesCaliber":
             value = global_calibers.get(value)
-        elif attr == "usesResource":
-            value = global_usesResource.get(value)
+        elif attr == "usesResource" or attr == "resource":
+            value = global_usesResource.get(value) 
+            # value = usesResource(value).name
         elif attr == "itemType":
             value = ItemType(value).name
         elif attr == "useType":
@@ -500,7 +506,7 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
         elif attr == "appliesEnchantment":
             enchant_obj = global_enchant_attr.get(value)
             value = process_asset(enchant_obj)
-                
+
         asset_dict[attr] = value
     return asset_dict
 
@@ -681,7 +687,7 @@ def process_character_base_attr(attrib: MonoBehaviour) -> AttributeContainerNew:
     get_attrib_type_label = get_translation(attrib_type_label, global_language, "EntityAttributes/")
     result: AttributeContainerNew = {}
     if get_attrib_type_label == attrib_type_label:
-        result["type"] = attrib_type
+        result["type"] = EntityAttributes(attrib.type).name
     else:
     #     result["type"] = get_translation(f"{attrib.type.deref_parse_as_dict()["m_Name"]}_label", global_language, "EntityAttributes/")
         result["type"] = get_attrib_type_label
@@ -695,7 +701,9 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
     m_name_value = getattr(asset, "m_Name", None)
     for key, type in Unit.__annotations__.items():
         value = getattr(asset, key)
-        if key == "displayName":
+        if key == "id":
+            value = value.value
+        elif key == "displayName":
             if m_name_value:
                 value = get_translation(m_name_value, global_language, "UnitNames/")
             else:
