@@ -100,13 +100,17 @@ ItemAttributes = Enum("ItemAttributes", [
     ("ExtraDamage_RightGun", 96),
     ("ExtraDamage_LeftGun", 97),
     ("DisableMuzzleFlash", 98),
-    ("End", 99),
+    ("ProjectileVisualArrow", 99),
+    ("ProjectileVisualCorruptedSludge", 100),
+    ("ProjectileBehaviourTimeout", 101),
+    ("ProjectileGravityFactor", 102),
+    ("End", 103),
 ])
 
 EntityAttributes = Enum(
     "EntityAttributes",
     [
-        ("None", 0),
+        ("None_", 0),
         ("ExtraDamage_AssaultRifle", 1),
         ("ExtraDamage_Automatic", 2),
         ("ExtraDamage_Earth", 3),
@@ -223,5 +227,8 @@ EntityAttributes = Enum(
         ("NegativeEffect_Knockback", 114),
         ("Stat_GlobalDamageMultiplier", 115),
         ("Stat_Thorns", 116),
+        ("NegativeEffect_Pollen", 117),
+        ("NegativeEffect_FoulFate", 118),
+        ("End", 119),
     ],
 )

@@ -96,7 +96,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
             if data.m_Name in ["ItemDatabase", "EndlessCardRewardDatabase", "UnitDatabase", "RecipeDatabase", "EnchantmentDatabase"]:
                 asset_access[pptr.path_id] = data
 
-            if hasattr(data, "makesProjectileApplyAttribute"):
+            if hasattr(data, "applyAttributeModifier"):
                 item_attr_id = data.id
                 if isinstance(item_attr_id, int):
                     global_item_attr[item_attr_id] = data
@@ -437,8 +437,9 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
             elif attr == "removeStatusOnConsume":
                 status_list = []
                 for status in value:
-
-                    status_list.append(global_entity_attr.get(status).m_Name)
+                    # print(global_entity_attr.get(status))
+                    if status:
+                        status_list.append(global_entity_attr.get(status).m_Name)
                 value = status_list
 
             else:
@@ -777,25 +778,20 @@ def write_asset(tree: dict[str, Any], name: str, path: str) -> None:
     base_name = file_name
     counter = 1
 
-    if "Item" in path:
-        while True:
-            fp = os.path.join(path, f"{file_name}.json")
-            if not os.path.exists(fp):
-                break
-
-            with open(fp, "rt", encoding="utf8") as f:
-                existing_data = json.load(f)
-
-            if (tree.get("displayName") == existing_data.get("displayName") and
-                # tree.get("identifier") == existing_data.get("identifier") and
-                tree.get("m_Name") == existing_data.get("m_Name") and
-                tree.get("itemDescriptionName") == existing_data.get("itemDescriptionName")):
-                return
-
-            file_name = f"{base_name}_{counter}"
-            counter += 1
-    else:
+    while True:
         fp = os.path.join(path, f"{file_name}.json")
+        if not os.path.exists(fp):
+            break
+
+        with open(fp, "rt", encoding="utf8") as f:
+            existing_data = json.load(f)
+
+        if tree == existing_data:
+            return
+
+        file_name = f"{base_name}_{counter}"
+        counter += 1
+    
     with open(fp, "wt", encoding="utf8") as f:
         json.dump(tree, f, ensure_ascii=False, indent=4)
 

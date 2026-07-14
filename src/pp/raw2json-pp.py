@@ -17,11 +17,48 @@ ATTRIBUTE_MAPPING = {
 DISPLAYNAME_MAPPING = {
     "Enchantment_OverdoseOil": "超量油",
     "Item_Marshmallow": "棉花糖（串）",
-    "Item_EyePatch": "独眼罩"
+    "Item_EyePatch": "独眼罩",
+    "Attachment_LaserSightLime": "激光瞄准镜（青柠色）",
+    "Attachment_LaserSightBone": "激光瞄准镜（骨色）",
+    "Attachment_LaserSightRed": "激光瞄准镜（红色）",
+    "Attachment_LaserSightTangerine": "激光瞄准镜（橘色）",
+    "Attachment_LaserSightTeal": "激光瞄准镜（蓝绿色）",
+    "Attachment_LaserSightLightBlue": "激光瞄准镜（浅蓝色）",
+    "Attachment_LaserSightGold": "激光瞄准镜（金色）",
+    "Attachment_LaserSightGreen": "激光瞄准镜（绿色）",
+    "Attachment_LaserSightMagenta": "激光瞄准镜（洋红色）",
+    "Attachment_LaserSightOrange": "激光瞄准镜（橙色）",
+    "Attachment_LaserSightRosePink": "激光瞄准镜（玫瑰粉色）",
+    "Attachment_LaserSightDenimBlue": "激光瞄准镜（牛仔蓝）",
+    "Attachment_LaserSightPurple": "激光瞄准镜（紫色）",
+    "Attachment_LaserSightYellow": "激光瞄准镜（黄色）",
+    "Attachment_LaserSightPoop": "激光瞄准镜（棕色）",
+}
+
+EN_DISPLAYNAME_MAPPING = {
+    "Attachment_LaserSightLime": "Laser Sight (Lime)",
+    "Attachment_LaserSightBone": "Laser Sight (Bone)",
+    "Attachment_LaserSightRed": "Laser Sight (Red)",
+    "Attachment_LaserSightTangerine": "Laser Sight (Tangerine)",
+    "Attachment_LaserSightTeal": "Laser Sight (Teal)",
+    "Attachment_LaserSightLightBlue": "Laser Sight (Light Blue)",
+    "Attachment_LaserSightGold": "Laser Sight (Gold)",
+    "Attachment_LaserSightGreen": "Laser Sight (Green)",
+    "Attachment_LaserSightMagenta": "Laser Sight (Magenta)",
+    "Attachment_LaserSightOrange": "Laser Sight (Orange)",
+    "Attachment_LaserSightRosePink": "Laser Sight (Rose Pink)",
+    "Attachment_LaserSightDenimBlue": "Laser Sight (Denim Blue)",
+    "Attachment_LaserSightPurple": "Laser Sight (Purple)",
+    "Attachment_LaserSightYellow": "Laser Sight (Yellow)",
+    "Attachment_LaserSightPoop": "Laser Sight (Poop)",
 }
 
 ITEMTYPE_MAPPING = {
-    "PassiveEnhancements": "饰品"
+    "PassiveEnhancements": "饰品",
+    "ItemRepair": "维修",
+    "ItemConsumable": "枪凿",
+    "Key": "钥匙",
+    "Attachment": "配件",
 }
 
 # 全局变量
@@ -47,19 +84,44 @@ def get_translation(name: str, lang: str = "zh-CN", prefix: str = "Items/") -> s
             return name
     except: return name
 
-def format_value(value, mod_type, isBoolean, isPercentage):
-    if isBoolean: return ""
-    if mod_type in ["Flat", 100]:
-        if isPercentage:
-            return f"+{int(round(value * 100))}%" if value >= 0 else f"{int(round(value * 100))}%"
-        return f"+{round(value, 2)}" if value >= 0 else f"{round(value, 2)}"
-    elif mod_type in ["PercentAdd", 200]:
-        return f"(+) +{round(value * 100)}%" if value >= 0 else f"(+) {round(value * 100)}%"
-    elif mod_type in ["PercentMult", 300]:
-        return f"(×) +{round(value * 100)}%" if value >= 0 else f"(×) {round(value * 100)}%"
-    return f"+{round(value, 2)}"
 
-def map_effects(modifiers, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, remove_status_on_consume, is_enchantment=False):
+
+def format_value(value, mod_type, isBoolean, isPercentage):
+    #     if isBoolean: return ""
+    #     if mod_type in ["Flat", 100]:
+    #         if isPercentage:
+    #             return f"+{int(round(value * 100))}%" if value >= 0 else f"{int(round(value * 100))}%"
+    #         return f"+{round(value, 2)}" if value >= 0 else f"{round(value, 2)}"
+    #     elif mod_type in ["PercentAdd", 200]:
+    #         return f"(+) +{round(value * 100)}%" if value >= 0 else f"(+) {round(value * 100)}%"
+    #     elif mod_type in ["PercentMult", 300]:
+    #         return f"(×) +{round(value * 100)}%" if value >= 0 else f"(×) {round(value * 100)}%"
+    #     return f"+{round(value, 2)}"
+    if isBoolean:
+        return ""
+
+    if value == 0:
+        if mod_type in ["PercentAdd", 200]:
+            return "(+) 0%"
+        if mod_type in ["PercentMult", 300]:
+            return "(×) 0%"
+        return "0"
+    
+    sign = "+" if value > 0 else ""
+    abs_val = abs(value)
+    
+    if isPercentage or mod_type in ["PercentAdd", 200, "PercentMult", 300]:
+        num = f"{round(abs_val * 100)}%"
+    else:
+        num = str(int(abs_val)) if abs_val.is_integer() else f"{round(abs_val, 2)}"
+    
+    if mod_type in ["PercentAdd", 200]:
+        return f"(+) {sign}{num}"
+    if mod_type in ["PercentMult", 300]:
+        return f"(×) {sign}{num}"
+    return f"{sign}{num}"
+
+def map_effects(modifiers, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, remove_status_on_consume, is_enchantment=False, item_id=None, item_name=None):
     effects = {}
     if isinstance(modifiers, dict):
         if modifiers.get("CostsDurability", 1) == 0:
@@ -103,17 +165,46 @@ def map_effects(modifiers, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, remove_status_
             continue
 
         if "HealthRegen" in raw_attr or raw_attr == "Health regen":
-            final_hp = total_override if total_override != 0 else int(value * duration)
-            effects["生命恢复"] = f"{int(final_hp)} HP ({duration}秒)"
+            if mod_type not in ["Flat", 100]:
+                print(f"Warning: HealthRegen '{raw_attr}' has mod_type {mod_type}, expected Flat - Item: {item_id} ({item_name})")
+                mod_type = "Flat"
+            
+            if total_override != 0:
+                total_hp = int(total_override)
+                rate_per_sec = total_override / duration if duration > 0 else total_override
+            else:
+                total_hp = int(value * duration) if duration > 0 else int(value)
+                rate_per_sec = value
+            
+            if duration > 0:
+                if abs(rate_per_sec - int(rate_per_sec)) < 0.01:
+                    rate_text = f"{int(rate_per_sec)}HP/s"
+                else:
+                    rate_text = f"{rate_per_sec:.1f}HP/s"
+                effects["生命恢复"] = f"{total_hp} HP（{duration}秒, {rate_text}）"
+            else:
+                effects["生命恢复"] = f"{total_hp} HP"
+            continue
+            
         elif duration:
             if total_override != 0:
                 display_val = f"{int(total_override)}" 
             else:
-                if value > 1 and not is_perc:
-                    display_val = f"+{round(value)}"
+                sign = "+" if value > 0 else ""
+                
+                prefix = ""
+                if mod_type in ["PercentAdd", 200]:
+                    prefix = "(+) "
+                elif mod_type in ["PercentMult", 300]:
+                    prefix = "(×) "
+                
+                if not is_perc:
+                    display_val = f"{sign}{round(value, 2)}"
                 else:
-                    display_val = f"{int(round(value * 100))}%"
-            effects[mapped_attr] = f"{display_val} ({duration}秒)"
+                    display_val = f"{sign}{int(round(value * 100))}%"
+                
+                display_val = prefix + display_val
+            effects[mapped_attr] = f"{display_val}（{duration}秒）"
         else:
             effects[mapped_attr] = f"+{int(value)}" if raw_attr == "Durability" else format_value(value, mod_type, is_bool, is_perc)
 
@@ -148,7 +239,7 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                     if display_name == identifier:
                         display_name = content.get("displayName", identifier)
                     
-                    english_name = get_translation(identifier, "en", "Items/")
+                    english_name = EN_DISPLAYNAME_MAPPING.get(identifier,  get_translation(identifier, "en", "Items/"))
                     if english_name == identifier:
                         english_name = get_translation(f"{identifier}_Title", "en", "Endless/")
 
@@ -158,8 +249,13 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
 
                     res_item["Name"] = {"ZH": display_name, "EN": english_name}
 
-                    desc = get_translation(identifier, "zh-CN", "ItemDescriptions/") if content.get("hasCustomDescription", 0) else content.get("description", "")
-                    
+                    desc = content.get("description", "")
+
+                    if content.get("hasCustomDescription", 0):
+                        
+                        if not desc:
+                            desc = get_translation(f"{identifier}", "zh-CN", "ItemDescriptions/")
+
                     if is_card:
                         amount_value = ""
                         # Card Type 
@@ -211,9 +307,12 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                                 else:
                                     amount_value = int(spawnCount)
 
-                    res_item["Desc"] = desc.replace("+", "").replace("AMOUNT_X", str(amount_value)) if is_card else desc
+                    if is_card:
+                        res_item["Desc"] = desc.replace("+", "").replace("AMOUNT_X", str(amount_value))
+                    else:
+                        res_item["Desc"] = desc
 
-                    if content.get("flavor"): res_item["Flav"] = content.get("flavor", "")
+                    if content.get("flavor"): res_item["Flav"] = content.get("flavor", "").replace("BANISH_X", str(1)).replace("CHOICEDRAW_X", str(2)).replace("REROLLS_X", str(1))
 
                     if content.get("customArtwork"): res_item["Artwork"] = content.get("customArtwork", "")
 
@@ -224,15 +323,24 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                         w_type = content.get("weaponType", "")
                         res_item["Type"] = get_translation(f"WeaponType_{w_type}", "zh-CN", "ItemDescriptions/")
                     elif folder_type == "Consumables":
-                        if content.get("recipesTaughtOnConsume"): res_item["Type"] = "食谱"
-                        elif content.get("currencyOnConsume"): res_item["Type"] = "货币"
-                        elif content.get("resourceOnConsume"): res_item["Type"] = "资源"
-                        else: res_item["Type"] = "消耗品"
+                        if content.get("recipesTaughtOnConsume"):
+                            res_item["Type"] = "食谱"
+                        elif content.get("currencyOnConsume"):
+                            res_item["Type"] = "货币"
+                        elif content.get("resourceOnConsume"):
+                            res_item["Type"] = "资源"
+                        else:
+                            res_item["Type"] = "消耗品"
                     else:
-                        slot = content.get("slotType", "") or content.get("cardType", "")
-                        if slot:
-                            slot = get_translation(slot, "zh-CN", "")
-                            res_item["Type"] = ITEMTYPE_MAPPING.get(slot, slot)
+                        item_type = (
+                            content.get("slotType") if content.get("slotType") not in (None, "", "None") else None
+                        ) or (
+                            content.get("cardType") if content.get("cardType") not in (None, "", "None") else None
+                        ) or (
+                            content.get("useType") if content.get("useType") not in (None, "", "None") else None
+                        ) or ""
+                        if item_type:
+                            res_item["Type"] = ITEMTYPE_MAPPING.get(item_type, get_translation(item_type, "zh-CN"))
 
                     # 效果与修饰符
                     is_enchantment = folder_type in ["Oils", "Scrolls"]
@@ -241,8 +349,9 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                         "Equipment": "modifiersOnEquipNew",
                         "Oils": "appliesEnchantment",
                         "Scrolls": "appliesEnchantment",
-                        "Attachments": "modifiersOnAttachToItem",
+                        "Attachments": ["modifiersOnAttachToItem", "modifiersOnEquipNew"],
                         "Consumables": ["buffsOnConsume", "valueChangeOnItemConsume"],
+                        "Repair Items": "valueChangeOnItemConsume"
                     }
                     mods = []
 
@@ -275,7 +384,11 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                     else:
                         target_key = mods_map.get(folder_type, "buffsOnConsume")
                         if isinstance(target_key, list):
-                            mods = content.get(target_key[0], []) or content.get(target_key[1], [])
+                            mods = []
+                            for key in target_key:
+                                mods_list = content.get(key, [])
+                                if mods_list:
+                                    mods.extend(mods_list)
                         else:
                             mods = content.get(target_key, [])
 
@@ -283,7 +396,7 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                     if recipesTaughtOnConsume and folder_type == "Consumables":
                         res_item["Recipes"] = recipesTaughtOnConsume
 
-                    effects = map_effects(mods, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, content.get("removeStatusOnConsume", []), is_enchantment)
+                    effects = map_effects(mods, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, content.get("removeStatusOnConsume", []), is_enchantment, item_id=identifier, item_name=display_name)
                     if effects and folder_type != "Weapons": res_item["Effects"] = effects
 
                     if folder_type == "Weapons":
@@ -293,37 +406,53 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
 
                         if caliber: res_item["Caliber"] = caliber
 
+                        overrideDamage = content.get("overrideDamage")
                         # if caliber: res_item["Damage"] = int(calc_damage(content.get("damageMultiplier", 1), caliber, weapon_type))
-                        weapon_damage = int(calc_damage(content.get("damageMultiplier", 1), caliber, weapon_type))
+                        if overrideDamage:
+                            weapon_damage = overrideDamage
+                        else:
+                            weapon_damage = int(calc_damage(content.get("damageMultiplier", 1), caliber, weapon_type))
+
                         if weapon_damage > 0:
+                            pellet_count = None
                             if caliber == "12ga":
-                                if iMaxAmmoPerShot > 1:
-                                    res_item["Damage"] = [weapon_damage, 8, int(iMaxAmmoPerShot)]
-                                else:
-                                    res_item["Damage"] = [weapon_damage, 8]
+                                pellet_count = 8
                             elif identifier == "Weapon_Augusta":
+                                pellet_count = 3
+                            
+                            if pellet_count:
+                                damage_value = [weapon_damage, pellet_count]
                                 if iMaxAmmoPerShot > 1:
-                                    res_item["Damage"] = [weapon_damage, 3, int(iMaxAmmoPerShot)]
-                                else:
-                                    res_item["Damage"] = [weapon_damage, 3]
+                                    damage_value.append(iMaxAmmoPerShot)
                             else:
+                                damage_value = weapon_damage
                                 if iMaxAmmoPerShot > 1:
-                                    res_item["Damage"] = [weapon_damage, int(iMaxAmmoPerShot)]
-                                else:
-                                    res_item["Damage"] = weapon_damage
+                                    damage_value = [weapon_damage, iMaxAmmoPerShot]
+                            
+                            res_item["Damage"] = damage_value
+                            res_item["DamageMultiplier"] = content.get("damageMultiplier", 1)
 
                         if content.get("rpm", 0) > 0: res_item["RPM"] = content.get("rpm", 0)
                         if content.get("iAmmoMax", 0) > 0: res_item["AmmoMax"] = content.get("iAmmoMax", 0)
                         
+                        spread_value = None
                         spread_list = content.get("spreadPerCaliber", [])
-                        for spread in spread_list:
-                            if spread.get("Caliber") == caliber:
-                                spread_value = spread.get("Spread", "")
-                                break
+                        if spread_list:
+                            for spread in spread_list:
+                                if spread.get("Caliber") == caliber:
+                                    spread_value = spread.get("Spread", "")
+                                    break
+                        else:
+                            baseAttributes_list = content.get("baseAttributes", [])
+                            for baseAttributes in baseAttributes_list:
+                                if baseAttributes.get("attributeName") == "Spread":
+                                    spread_value = baseAttributes.get("value", None)
+                                    break
                         if spread_value: res_item["Spread"] = spread_value
 
                         if content.get("bulletSpeed", 0) > 0: res_item["BulletSpeed"] = int(content.get("bulletSpeed", 0))
 
+                        kick_power = None
                         kick_power_list = content.get("kickPower", [])
                         for kick in kick_power_list:
                             if kick.get("Caliber") == caliber:
@@ -331,6 +460,7 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                                 break
                         if kick_power: res_item["KickPower"] = round(kick_power, 3)
 
+                        kickCompensation = None
                         baseAttributes_list = content.get("baseAttributes", [])
                         for baseAttributes in baseAttributes_list:
                             if baseAttributes.get("attributeName") == "KickCompensation":
@@ -341,25 +471,28 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                         weightType = {"Knife": 0,"Pistol": 5,"SMG": 8,"Rifle": 16,"Sniper": 25,"Bigga": 35}
                         res_item["Weight"] = weightType.get(content.get("weightClass", 0), 0)
 
-                        if content.get("maxDurability", 0) > 0: res_item["Durability"] = int(content.get("maxDurability"))
+                    
+                    if content.get("maxDurability", 0) > 0: res_item["Durability"] = int(content.get("maxDurability"))
+
                     size = [content.get("inventorySize", {}).get("x", 0), content.get("inventorySize", {}).get("y", 0)]
                     if size[0] > 0: res_item["Size"] = size
+
                     if content.get("basePrice", 0) > 0: res_item["Price"] = content.get("basePrice")
   
                     result[f"{'?_' if content.get("slotType", "") == 'Gadget' or display_name.startswith("Weapon_") or display_name.startswith("Manual_Recipe_") else ''}{display_name}"] = res_item
             except Exception as e: print(f"错误 {filename}: {e}")
     
-    # sorted_res = {k: result[k] for k in sorted(result, key=lambda x: result[x]["ID"])}
+    sorted_res = {k: result[k] for k in sorted(result, key=lambda x: result[x]["ID"])}
     # sorted_res = {k: result[k] for k in sorted(result, key=lambda x: result[x]["ID"] if result[x]["ID"] is not None else 0)}
-    sorted_res = {k: result[k] for k in sorted(result, key=lambda x: result[x]["Name"]["EN"])}
+    # sorted_res = {k: result[k] for k in sorted(result, key=lambda x: result[x]["Name"]["EN"])}
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(sorted_res, f, indent=4, ensure_ascii=False)
 
 def main():
-    folder = "ItemSpawn"   # 可以是 "Weapons", "Equipment", "Repair Items", "Misc Items", "Oils", "Scrolls", "Attachments", "Consumables"
+    folder = "Misc Items"   # 可以是 "Weapons", "Equipment", "Repair Items", "Misc Items", "Oils", "Scrolls", "Attachments", "Consumables", "Chisels", "Keys"
     is_card = folder in ["Buff", "EntitySpawn", "Event", "ItemSpawn"] 
-    # convert_to_target_format(f"./Items/{folder}", f"{folder}_output.json", folder)
-    convert_to_target_format(f"./Cards/{folder}", f"{folder}_output.json", folder, is_card)
+    convert_to_target_format(f"./Items/{folder}", f"{folder}_output.json", folder)
+    # convert_to_target_format(f"./Cards/{folder}", f"{folder}_output.json", folder, is_card)
 
 if __name__ == "__main__":
     main()
