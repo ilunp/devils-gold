@@ -74,6 +74,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     global global_language
     global global_game_settings
     global global_quest_items
+    global global_recipes
     
     global_language = language
     unpack_dir = os.path.join(
@@ -156,6 +157,7 @@ def unpack_assets(source: str, version: str, language: str) -> None:
 
     print(
         f"Found: {len(global_items)} Items, \n"
+        f"       {len(global_recipes.recipes)} Recipes, \n"
         f"       {len(global_item_attr)} Item Attributes, \n"
         f"       {len(global_loot_tables)} Loot tables, \n"
         f"       {len(global_world_environment)} World Environments, \n"
@@ -388,6 +390,19 @@ def get_attribute_modifier(attributes: list[PPtr], is_item: bool = False) -> lis
     return attribute_list
 
 
+def get_recipe_createsItem_name(name: str) -> str:
+    for recipe in global_recipes.recipes:
+            if recipe.name == name:
+                creates_item_id = recipe.createsItem
+                if hasattr(creates_item_id, 'value'):
+                    creates_item_id = creates_item_id.value
+                if creates_item_id in global_items_id:
+                    creates_item_name = global_items_id[creates_item_id]
+                    return creates_item_name
+                    # return get_translation(creates_item_name, global_language)
+    return name
+
+
 def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]:
     global global_calibers
     global global_world_environment
@@ -441,6 +456,18 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
                     if status:
                         status_list.append(global_entity_attr.get(status).m_Name)
                 value = status_list
+            
+            elif attr == "addStatusOnConsume":
+                status_list = []
+                for status_item in value:
+                    status_dict = process_asset(status_item)
+                    status_id = status_dict.get("status")
+                    if status_id:
+                        status_obj = global_entity_attr.get(status_id)
+                        if status_obj:
+                            status_dict["statusName"] = status_obj.m_Name
+                    status_list.append(status_dict)
+                value = status_list
 
             else:
                 new_list = []
@@ -467,6 +494,15 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
             # value = get_translation(asset.identifier, global_language)
             if is_card:
                 value = get_translation(f"{asset.m_Name}_Title", global_language, "Endless/")
+            elif asset.m_Name.startswith("Manual_Recipe"):
+                value = get_translation("Manual_RecipeDynamic", global_language)
+                if hasattr(asset, "recipesTaughtOnConsume") and asset.recipesTaughtOnConsume:
+                    recipe_name = global_recipes_id.get(asset.recipesTaughtOnConsume[0].value)
+                    if recipe_name:
+                        createsItem = get_recipe_createsItem_name(recipe_name)
+                        if createsItem:
+                            value = value.replace("X_ITEM", get_translation(createsItem, global_language))
+
             else:
                 value = get_translation(asset.m_Name, global_language)
         # elif attr == "flavor" and "identifier" in attr_list:
@@ -481,6 +517,12 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
                 value = get_translation(f"{asset.m_Name}_description", global_language)
             elif is_card:
                 value = get_translation(f"{asset.m_Name}_Description", global_language, "Endless/")
+            elif asset.m_Name.startswith("Manual_"):
+                value = get_translation("DynamicString_TeachesRecipes", global_language, "ItemDescriptions/")
+                if value:
+                    value = value.replace("AMOUNT_X", str(len(asset.recipesTaughtOnConsume)))
+                else:
+                    value = ""
         elif attr == "caliber" or attr == "Caliber" or attr == "modifiesCaliber":
             value = global_calibers.get(value)
         elif attr == "usesResource" or attr == "resource":
@@ -509,7 +551,33 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
             value = process_asset(enchant_obj)
 
         asset_dict[attr] = value
+
+    if hasattr(asset, 'm_Name') and asset.m_Name.startswith("Manual_Recipe") and hasattr(asset, "recipesTaughtOnConsume") and asset.recipesTaughtOnConsume:
+        recipe_name = global_recipes_id.get(asset.recipesTaughtOnConsume[0].value)
+        if recipe_name:
+            createsItem = get_recipe_createsItem_name(recipe_name)
+            if createsItem:
+                asset_dict["taughtRecipeProduct"] = createsItem
+
     return asset_dict
+
+
+def process_item(asset: MonoBehaviour, path_id: int, destination_folder: str) -> None:
+    global asset_name_map
+    global global_language
+    final_destination = destination_folder
+    name = ""
+    tree: dict[str, Any] = {}
+    final_destination = get_item_type_dir(asset, destination_folder)
+    tree = process_asset(asset)
+    # name = get_translation(asset.identifier, global_language)
+    # name = get_translation(asset.m_Name, global_language)
+    name = tree.get("displayName", "")
+    if not name:
+        name = get_translation(asset.m_Name, global_language)
+    asset_name_map[path_id] = name
+    
+    write_asset(tree, name, final_destination)
 
 
 def get_unique_recipe_name(recipe: dict[str, Any]) -> str:
@@ -528,20 +596,6 @@ def get_unique_recipe_name(recipe: dict[str, Any]) -> str:
     recipe_str = json.dumps(new_dict, ensure_ascii=False)
     unique_name = f"{item_name}_{quantity}_{create_uuid_from_string(recipe_str)}"
     return unique_name
-
-
-def process_item(asset: MonoBehaviour, path_id: int, destination_folder: str) -> None:
-    global asset_name_map
-    global global_language
-    final_destination = destination_folder
-    name = ""
-    tree: dict[str, Any] = {}
-    final_destination = get_item_type_dir(asset, destination_folder)
-    # name = get_translation(asset.identifier, global_language)
-    name = get_translation(asset.m_Name, global_language)
-    asset_name_map[path_id] = name
-    tree = process_asset(asset)
-    write_asset(tree, name, final_destination)
 
 
 def process_recipe(asset: MonoBehaviour, destination_folder: str) -> None:

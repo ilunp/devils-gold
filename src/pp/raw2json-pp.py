@@ -107,7 +107,7 @@ def format_value(value, mod_type, isBoolean, isPercentage):
             return "(×) 0%"
         return "0"
     
-    sign = "+" if value > 0 else ""
+    sign = "+" if value > 0 else "-"
     abs_val = abs(value)
     
     if isPercentage or mod_type in ["PercentAdd", 200, "PercentMult", 300]:
@@ -132,7 +132,7 @@ def map_effects(modifiers, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, remove_status_
         if is_enchantment and modifier.get("showInItemDescription", 1) == 0:
             continue
             
-        raw_attr = modifier.get("localizationName") or modifier.get("attributeName") or str(modifier.get("attribute", ""))
+        raw_attr = modifier.get("localizationName") or modifier.get("attributeName") or str(modifier.get("attribute", "")) or str(modifier.get("statusName", ""))
         mod_type = modifier.get("modType") or modifier.get("statModType", "")
         value = modifier.get("value", 0)
         duration = modifier.get("duration", 0)
@@ -164,6 +164,10 @@ def map_effects(modifiers, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, remove_status_
             effects[mapped_attr] = True
             continue
 
+        if "statusName" in modifier:
+            effects[get_translation(f"{raw_attr}_label", "zh-CN", "EntityAttributes/")] = f"{value} 秒"
+            continue
+
         if "HealthRegen" in raw_attr or raw_attr == "Health regen":
             if mod_type not in ["Flat", 100]:
                 print(f"Warning: HealthRegen '{raw_attr}' has mod_type {mod_type}, expected Flat - Item: {item_id} ({item_name})")
@@ -185,7 +189,7 @@ def map_effects(modifiers, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, remove_status_
             else:
                 effects["生命恢复"] = f"{total_hp} HP"
             continue
-            
+
         elif duration:
             if total_override != 0:
                 display_val = f"{int(total_override)}" 
@@ -235,13 +239,18 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                     content = json.load(f)
                     identifier = content.get("m_Name", "")
 
-                    display_name = DISPLAYNAME_MAPPING.get(identifier,  get_translation(identifier, "zh-CN", "Items/"))
+                    display_name = DISPLAYNAME_MAPPING.get(identifier, get_translation(identifier, "zh-CN", "Items/"))
                     if display_name == identifier:
                         display_name = content.get("displayName", identifier)
-                    
-                    english_name = EN_DISPLAYNAME_MAPPING.get(identifier,  get_translation(identifier, "en", "Items/"))
+
+                    english_name = EN_DISPLAYNAME_MAPPING.get(identifier, get_translation(identifier, "en", "Items/"))
                     if english_name == identifier:
                         english_name = get_translation(f"{identifier}_Title", "en", "Endless/")
+
+                    if display_name.startswith("食谱：") and content.get("taughtRecipeProduct"):
+                        item_name = content.get("taughtRecipeProduct")
+                        display_name = get_translation("Manual_RecipeDynamic", "zh-CN", "Items/").replace("X_ITEM", get_translation(item_name, "zh-CN", "Items/"))
+                        english_name = get_translation("Manual_RecipeDynamic", "en", "Items/").replace("X_ITEM", get_translation(item_name, "en", "Items/"))
 
                     res_item = {}
 
@@ -350,8 +359,9 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                         "Oils": "appliesEnchantment",
                         "Scrolls": "appliesEnchantment",
                         "Attachments": ["modifiersOnAttachToItem", "modifiersOnEquipNew"],
-                        "Consumables": ["buffsOnConsume", "valueChangeOnItemConsume"],
-                        "Repair Items": "valueChangeOnItemConsume"
+                        "Consumables": ["buffsOnConsume", "valueChangeOnItemConsume", "addStatusOnConsume"],
+                        "Repair Items": "valueChangeOnItemConsume",
+                        "Valuables": "modifiersOnEquipNew"
                     }
                     mods = []
 
@@ -489,7 +499,7 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
         json.dump(sorted_res, f, indent=4, ensure_ascii=False)
 
 def main():
-    folder = "Misc Items"   # 可以是 "Weapons", "Equipment", "Repair Items", "Misc Items", "Oils", "Scrolls", "Attachments", "Consumables", "Chisels", "Keys"
+    folder = "Valuables"   # 可以是 "Weapons", "Equipment", "Repair Items", "Misc Items", "Oils", "Scrolls", "Attachments", "Consumables", "Chisels", "Keys"
     is_card = folder in ["Buff", "EntitySpawn", "Event", "ItemSpawn"] 
     convert_to_target_format(f"./Items/{folder}", f"{folder}_output.json", folder)
     # convert_to_target_format(f"./Cards/{folder}", f"{folder}_output.json", folder, is_card)
