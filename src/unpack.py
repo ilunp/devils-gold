@@ -59,8 +59,10 @@ global_game_settings: MonoBehaviour | None = None
 global_world_environment: dict[int, MonoBehaviour] = {}
 global_loot_tables: dict[int, MonoBehaviour] = {}
 
+global_factions: dict[int, MonoBehaviour] = {}
 global_units: dict[int, MonoBehaviour] = {}
 global_npcs: dict[int, MonoBehaviour] = {}
+global_dialog: dict[int, MonoBehaviour] = {}
 
 global_recipes: MonoBehaviour | None = None
 global_recipes_id: dict[int, str] = {}
@@ -140,11 +142,18 @@ def unpack_assets(source: str, version: str, language: str) -> None:
                     recipe_id = recipe.id.value
                     if isinstance(recipe_id, int):
                         global_recipes_id[recipe_id] = recipe.name
+            if hasattr(data, "demonym"):
+                global_factions[pptr.path_id] = data
+                faction_id = getattr(data, "id", None).value if hasattr(getattr(data, "id", None), "value") else getattr(data, "id", None)
+                if isinstance(faction_id, int):
+                    global_factions[faction_id] = pptr.path_id
             if hasattr(data, "unitType"):
                 global_units[pptr.path_id] = data
             # if hasattr(data, "meleeDamageType"):
             if hasattr(data, "damageTypeOverride"):
-                global_npcs[pptr.path_id] = data     
+                global_npcs[pptr.path_id] = data
+            if data.m_Name.startswith("Dialog_"):
+                global_dialog[pptr.path_id] = data
             if data.m_Name.startswith("Achievement_"):
                 global_achievements[pptr.path_id] = data
             if data.m_Name.startswith("Card_"):
@@ -161,8 +170,10 @@ def unpack_assets(source: str, version: str, language: str) -> None:
         f"       {len(global_item_attr)} Item Attributes, \n"
         f"       {len(global_loot_tables)} Loot tables, \n"
         f"       {len(global_world_environment)} World Environments, \n"
+        f"       {len(global_factions) / 2} Factions, \n"
         f"       {len(global_units)} Units, \n"
         f"       {len(global_npcs)} NPCs, \n"
+        f"       {len(global_dialog)} Dialogs, \n"
         f"       {len(global_achievements)} Achievements, \n"
         f"       {len(global_cards)} Cards, \n"
         f"       {len(global_quest_items)} Quest items, \n"
@@ -468,7 +479,13 @@ def process_asset(asset: MonoBehaviour, is_card: bool = False) -> dict[str, Any]
                             status_dict["statusName"] = status_obj.m_Name
                     status_list.append(status_dict)
                 value = status_list
-
+            elif attr == "friendlyIds" or attr == "neutralIds":
+                faction_list = []
+                for faction_id in value:
+                    if faction_id:
+                        faction_obj = global_factions.get(global_factions.get(faction_id))
+                        faction_list.append(str(faction_obj.m_Name))
+                value = faction_list
             else:
                 new_list = []
                 for item in value:
@@ -782,7 +799,9 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
         #         process_faction(value, destination_folder)
         #         value = value.deref_parse_as_dict()["prettyLabel"]
         elif key == "factionId":
-            value = FactionIds(value).name
+            value_path = global_factions.get(value)
+            process_faction(global_factions.get(value_path), destination_folder)
+            value = global_factions.get(value_path).m_Name
 
         elif key == "rolesAvailable":
             new_roles = []
@@ -819,9 +838,9 @@ def process_unit(asset: MonoBehaviour, destination_folder: str) -> None:
     write_asset(asset_dict, asset_dict["displayName"], final_destination)
 
 def process_faction(asset: MonoBehaviour, destination_folder: str) -> None:
-    processed_asset = process_asset(asset.deref_parse_as_object())
-    name = f"_Faction_{processed_asset['prettyLabel'] or processed_asset['m_Name']}"
-    final_destination = os.path.join(destination_folder, str(processed_asset['prettyLabel']))
+    processed_asset = process_asset(asset)
+    name = f"_{processed_asset['m_Name']}"
+    final_destination = os.path.join(destination_folder, str(processed_asset['m_Name']))
     write_asset(processed_asset, name, final_destination)
 
 

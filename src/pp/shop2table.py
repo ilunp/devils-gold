@@ -321,7 +321,7 @@ if __name__ == "__main__":
     # Set language ('en' for English, 'zh' for Chinese)
     # Control which tables to show (regular, demo, hidden)
     main(
-        lang='en',          # Language selection
+        lang='zh',          # Language selection
         show_regular=True,  # Show regular table
         show_demo=False,    # Hide demo table
         show_hidden=True    # Show hidden table
