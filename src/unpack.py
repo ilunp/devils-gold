@@ -3,6 +3,7 @@ import UnityPy
 from UnityPy.classes import PPtr, MonoBehaviour, int2_storage
 import argparse
 import json
+import re
 from translations import extract_translations, get_translation
 from typing import Any
 
@@ -220,6 +221,11 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     # for path_id, item in global_npcs.items():
     #     process_npc(item, npc_unpack_dir, path_id)
 
+    # print("Unpacking Dialogs...")
+    # dialog_sunpack_dir = os.path.join(unpack_dir, "Dialogs")
+    # for item in global_dialog.values():
+    #     process_dialog(item, dialog_sunpack_dir)
+
     print("Unpacking Loot Tables...")
     loot_table_unpack_dir = os.path.join(unpack_dir, "Loot Tables")
     for path_id, table in global_loot_tables.items():
@@ -236,13 +242,13 @@ def unpack_assets(source: str, version: str, language: str) -> None:
 
     print("Unpacking Cards...")
     cards_unpack_dir = os.path.join(unpack_dir, "Cards")
-    for card in global_cards.values():
-        process_card(card, cards_unpack_dir)
+    for item in global_cards.values():
+        process_card(item, cards_unpack_dir)
 
     print("Unpacking Quest Items...")
     quest_unpack_dir = os.path.join(unpack_dir, "Quests")
-    for quest_item in global_quest_items.values():
-        process_basic(quest_item, quest_unpack_dir)
+    for item in global_quest_items.values():
+        process_basic(item, quest_unpack_dir)
 
     # print("Unpacking Interacts...")
     # interact_unpack_dir = os.path.join(unpack_dir, "Interacts")
@@ -382,6 +388,8 @@ def get_attribute_modifier(attributes: list[PPtr], is_item: bool = False) -> lis
 
         if attr_obj:
             attr_dict["attributeName"] = attr_obj.m_Name
+            attr_dict["label"] = attr_obj.label
+            attr_dict["itemDescriptionName"] = attr_obj.itemDescriptionName
             if is_item:
                 # attr_dict["attributeName"] = get_translation(f"{attr_obj.m_Name}_label", global_language, "ItemAttributes/")
                 attr_dict["showInItemDescription"] = attr_obj.showInItemDescription
@@ -749,6 +757,45 @@ def process_npc(asset: MonoBehaviour, destination_folder: str, path_id: int) -> 
     except Exception as e:
         print(f"Error processing NPC Asset with path ID {path_id}: {e}")
 
+def process_dialog(asset: MonoBehaviour, destination_folder: str) -> None:
+    dialog_data = process_asset(asset)
+
+    serialized_graph = getattr(asset, "_serializedGraph", None)
+    if serialized_graph:
+        try:
+            serialized_graph = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", serialized_graph)
+
+            dialog_data["_serializedGraph"] = json.loads(serialized_graph, strict=False)
+
+        except Exception as e:
+            print(f"Failed parsing dialog {asset.m_Name}: {e}")
+
+            dialog_data["_serializedGraph"] = serialized_graph
+
+    actor_parameters = getattr(asset, "actorParameters", None)
+    if actor_parameters:
+        dialog_data["actorParameters"] = []
+        for actor in actor_parameters:
+            actor_dict = {}
+
+            for key in ["_keyName", "_id", "_actorObject"]:
+                if hasattr(actor, key):
+                    value = getattr(actor, key)
+
+                    if isinstance(value, PPtr):
+                        if value.path_id != 0:
+                            value = get_asset_name(value)
+                        else:
+                            value = None
+
+                    elif hasattr(value, "value"):
+                        value = value.value
+
+                    actor_dict[key] = value
+
+            dialog_data["actorParameters"].append(actor_dict)
+
+    write_asset(dialog_data, asset.m_Name, destination_folder)
 
 def process_character_base_attr(attrib: MonoBehaviour) -> AttributeContainerNew:
     # attrib_type = attrib.type.deref_parse_as_dict()["itemDescriptionName"]

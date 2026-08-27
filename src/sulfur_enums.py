@@ -177,7 +177,7 @@ MutationDefinitions = Enum(
 
 InteractableType = Enum(
     "InteractableType", 
-    [("Dialog", 0), ("Shop", 1), ("Repair", 2), ("Enchant", 3), ("Cook", 4), ("Interact", 5), ("LockedDoor", 6), ("Dice", 7), ("Cleanse", 8), ("Quest", 9)]
+    [("Dialog", 0), ("Shop", 1), ("Repair", 2), ("Enchant", 3), ("Cook", 4), ("Interact", 5), ("LockedDoor", 6), ("Dice", 7), ("Cleanse", 8), ("Quest", 9), ("Sacrifice", 10)]
 )
 
 CraftingType = Enum(

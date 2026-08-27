@@ -15,9 +15,10 @@ ATTRIBUTE_MAPPING = {
 }
 
 DISPLAYNAME_MAPPING = {
-    "Enchantment_OverdoseOil": "超量油",
-    "Item_Marshmallow": "棉花糖（串）",
-    "Item_EyePatch": "独眼罩",
+    # "Enchantment_OverdoseOil": "超量油",
+    "Enchantment_TooMuchOil": "过量油（Too Much Oil）",
+    "Item_Marshmallow": "棉花糖（Marshmallows）",
+    "Item_EyePatch": "眼罩（Eye Patch）",
     "Attachment_LaserSightLime": "激光瞄准镜（青柠色）",
     "Attachment_LaserSightBone": "激光瞄准镜（骨色）",
     "Attachment_LaserSightRed": "激光瞄准镜（红色）",
@@ -33,6 +34,10 @@ DISPLAYNAME_MAPPING = {
     "Attachment_LaserSightPurple": "激光瞄准镜（紫色）",
     "Attachment_LaserSightYellow": "激光瞄准镜（黄色）",
     "Attachment_LaserSightPoop": "激光瞄准镜（棕色）",
+
+    "Enchantment_Vinesprout": "藤蔓嫩芽卷轴",
+    "Enchantment_RigidSystemOil": "坚固魔油（Rigid System Oil）",
+    # "Enchantment_SturdyOil": "坚固魔油",
 }
 
 EN_DISPLAYNAME_MAPPING = {
@@ -51,6 +56,8 @@ EN_DISPLAYNAME_MAPPING = {
     "Attachment_LaserSightPurple": "Laser Sight (Purple)",
     "Attachment_LaserSightYellow": "Laser Sight (Yellow)",
     "Attachment_LaserSightPoop": "Laser Sight (Poop)",
+
+    "Enchantment_Vinesprout": "Scroll of Vine Sprout",
 }
 
 ITEMTYPE_MAPPING = {
@@ -59,6 +66,12 @@ ITEMTYPE_MAPPING = {
     "ItemConsumable": "枪凿",
     "Key": "钥匙",
     "Attachment": "配件",
+    "Misc Items": "杂物",
+    "Valuables": "贵重",
+}
+ITEMTAG_MAPPING = {
+    1: "器官",
+    2: "贵重",
 }
 
 # 全局变量
@@ -123,15 +136,19 @@ def format_value(value, mod_type, isBoolean, isPercentage):
 
 def map_effects(modifiers, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, remove_status_on_consume, is_enchantment=False, item_id=None, item_name=None):
     effects = {}
+    enchantment_name = None  # 新增变量存储附魔名称
+    
     if isinstance(modifiers, dict):
         if modifiers.get("CostsDurability", 1) == 0:
             effects["不会额外损失耐久度"] = ""
+        if modifiers.get("enchantmentName", ""):
+            enchantment_name = get_translation(f"{modifiers.get('m_Name', '')}", "zh-CN", "EnchantmentDefinitions/")
         modifiers = modifiers.get("modifiersApplied", [])
 
     for modifier in modifiers:
         if is_enchantment and modifier.get("showInItemDescription", 1) == 0:
             continue
-            
+
         raw_attr = modifier.get("localizationName") or modifier.get("attributeName") or str(modifier.get("attribute", "")) or str(modifier.get("statusName", ""))
         mod_type = modifier.get("modType") or modifier.get("statModType", "")
         value = modifier.get("value", 0)
@@ -156,6 +173,8 @@ def map_effects(modifiers, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, remove_status_
         else:
             # 3. Final fallback to the hardcoded mapping if no translation was found
             mapped_attr = ATTRIBUTE_MAPPING.get(raw_attr, get_translation(raw_attr, "zh-CN", "EntityAttributes/"))
+            if mapped_attr == raw_attr:
+                mapped_attr = modifier.get("itemDescriptionName", "")
         
         if raw_attr in BLOCKED_ATTRIBUTES:
             continue
@@ -214,9 +233,9 @@ def map_effects(modifiers, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, remove_status_
 
     if remove_status_on_consume:
         for status in remove_status_on_consume:
-            # print(status)
-            effects[f"移除{get_translation(f"{status}_label", 'zh-CN', 'EntityAttributes/')}"] = ""
-    return effects
+            effects[f"移除{get_translation(f'{status}_label', 'zh-CN', 'EntityAttributes/')}"] = ""
+    
+    return effects, enchantment_name
 
 def calc_damage(damageMultiplier, caliber, weapon_Type):
     caliber_damage = {"12ga": 20, "Laser": 50, "9mm": 60, "5.56mm": 80, "7.62mm": 100, "50 BMG": 200, "Arrow": 50}
@@ -346,10 +365,17 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                         ) or (
                             content.get("cardType") if content.get("cardType") not in (None, "", "None") else None
                         ) or (
-                            content.get("useType") if content.get("useType") not in (None, "", "None") else None
+                            f"UseType_{content.get('useType')}" if content.get("useType") not in (None, "", "None") else None
+                        ) or (
+                            ITEMTAG_MAPPING.get(content.get("itemTags")) if content.get("itemTags") not in (None, "", "None", 0) else None
+                        ) or (
+                            f"{folder_type}"
                         ) or ""
                         if item_type:
-                            res_item["Type"] = ITEMTYPE_MAPPING.get(item_type, get_translation(item_type, "zh-CN"))
+                            if item_type.startswith("UseType_"):
+                                res_item["Type"] = get_translation(item_type, "zh-CN", "ItemDescriptions/")
+                            else:
+                                res_item["Type"] = ITEMTYPE_MAPPING.get(item_type, get_translation(item_type, "zh-CN"))
 
                     # 效果与修饰符
                     is_enchantment = folder_type in ["Oils", "Scrolls"]
@@ -406,7 +432,13 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                     if recipesTaughtOnConsume and folder_type == "Consumables":
                         res_item["Recipes"] = recipesTaughtOnConsume
 
-                    effects = map_effects(mods, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, content.get("removeStatusOnConsume", []), is_enchantment, item_id=identifier, item_name=display_name)
+                    effects, enchantment_name = map_effects(mods, ATTRIBUTE_MAPPING, BLOCKED_ATTRIBUTES, 
+                                         content.get("removeStatusOnConsume", []), 
+                                         is_enchantment, item_id=identifier, 
+                                         item_name=display_name)
+                    if enchantment_name:
+                        res_item["EnchantmentName"] = enchantment_name
+                        
                     if effects and folder_type != "Weapons": res_item["Effects"] = effects
 
                     if folder_type == "Weapons":
@@ -499,7 +531,7 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
         json.dump(sorted_res, f, indent=4, ensure_ascii=False)
 
 def main():
-    folder = "Valuables"   # 可以是 "Weapons", "Equipment", "Repair Items", "Misc Items", "Oils", "Scrolls", "Attachments", "Consumables", "Chisels", "Keys"
+    folder = "Attachments"   # 可以是 "Weapons", "Equipment", "Repair Items", "Misc Items", "Oils", "Scrolls", "Attachments", "Consumables", "Chisels", "Keys"
     is_card = folder in ["Buff", "EntitySpawn", "Event", "ItemSpawn"] 
     convert_to_target_format(f"./Items/{folder}", f"{folder}_output.json", folder)
     # convert_to_target_format(f"./Cards/{folder}", f"{folder}_output.json", folder, is_card)
