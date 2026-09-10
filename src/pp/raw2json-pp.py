@@ -510,7 +510,7 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
                                 break
                         if kickCompensation: res_item["KickCompensation"] = round(kickCompensation, 3)
 
-                        weightType = {"Knife": 0,"Pistol": 5,"SMG": 8,"Rifle": 16,"Sniper": 25,"Bigga": 35}
+                        weightType = {"Knife": 0,"Pistol": 5,"SMG": 12,"Rifle": 20,"Sniper": 25,"Bigga": 35}
                         res_item["Weight"] = weightType.get(content.get("weightClass", 0), 0)
 
                     
@@ -531,7 +531,7 @@ def convert_to_target_format(input_folder, output_file, folder_type, is_card=Fal
         json.dump(sorted_res, f, indent=4, ensure_ascii=False)
 
 def main():
-    folder = "Attachments"   # 可以是 "Weapons", "Equipment", "Repair Items", "Misc Items", "Oils", "Scrolls", "Attachments", "Consumables", "Chisels", "Keys"
+    folder = "Weapons"   # 可以是 "Weapons", "Equipment", "Repair Items", "Misc Items", "Oils", "Scrolls", "Attachments", "Consumables", "Chisels", "Keys"
     is_card = folder in ["Buff", "EntitySpawn", "Event", "ItemSpawn"] 
     convert_to_target_format(f"./Items/{folder}", f"{folder}_output.json", folder)
     # convert_to_target_format(f"./Cards/{folder}", f"{folder}_output.json", folder, is_card)

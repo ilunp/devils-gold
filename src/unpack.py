@@ -8,6 +8,7 @@ from translations import extract_translations, get_translation
 from typing import Any
 
 from sulfur_enums import *
+from sulfur_attrs import *
 
 from sulfur_types import Unit, Faction, AttributeContainerNew
 from utils import clean_file_name, create_uuid_from_string
@@ -220,10 +221,10 @@ def unpack_assets(source: str, version: str, language: str) -> None:
     # for path_id, item in global_npcs.items():
     #     process_npc(item, npc_unpack_dir, path_id)
 
-    # print("Unpacking Dialogs...")
-    # dialog_sunpack_dir = os.path.join(unpack_dir, "Dialogs")
-    # for item in global_dialog.values():
-    #     process_dialog(item, dialog_sunpack_dir)
+    print("Unpacking Dialogs...")
+    dialog_sunpack_dir = os.path.join(unpack_dir, "Dialogs")
+    for item in global_dialog.values():
+        process_dialog(item, dialog_sunpack_dir)
 
     print("Unpacking Loot Tables...")
     loot_table_unpack_dir = os.path.join(unpack_dir, "Loot Tables")
