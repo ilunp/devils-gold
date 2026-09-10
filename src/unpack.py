@@ -8,7 +8,6 @@ from translations import extract_translations, get_translation
 from typing import Any
 
 from sulfur_enums import *
-from sulfur_attrs import *
 
 from sulfur_types import Unit, Faction, AttributeContainerNew
 from utils import clean_file_name, create_uuid_from_string

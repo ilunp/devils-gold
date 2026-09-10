@@ -1,6 +1,7 @@
 import csv
 import glob
 import os
+from functools import lru_cache
 import UnityPy
 from UnityPy.classes import MonoBehaviour
 
@@ -62,16 +63,25 @@ def extract_translations(path: str, unpack_dir: str) -> None:
             writer.writerow([term.Term] + term.Languages)
 
     translations_path = unpack_path
+    _table.cache_clear()
+    get_translation.cache_clear()
 
 
-def get_translation(name: str, lang: str = "en", prefix: str = "Items/") -> str:
-    global translations_path
-    global languages
-    column = languages[lang]
-    with open(translations_path, encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        fullName = prefix + name
+@lru_cache(maxsize=None)
+def _table(lang: str) -> dict[str, str]:
+    with open(translations_path, encoding="utf-8", newline="") as csvfile:
+        reader = csv.reader(csvfile)
+        column = next(reader).index(languages[lang])
+        table: dict[str, str] = {}
         for row in reader:
-            if row["20"] == fullName:
-                return row[column]
-        return name
+            if len(row) > column:
+                table.setdefault(row[0], row[column])
+        return table
+
+
+@lru_cache(maxsize=100_000)
+def get_translation(name: str, lang: str = "en", prefix: str = "Items/") -> str:
+    table = _table(lang)
+    key = prefix + name
+    return table[key] if key in table else name
+
